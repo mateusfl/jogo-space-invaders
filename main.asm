@@ -1,14 +1,14 @@
+# configs: tamanho_pixel 2x2; tamanho_tela 256x512
 .data
     COR_ESTRELA: .word 0x00FFFFFF
     COR_PLAYER: .word 0x0000FF00
     COR_ENEMY: .word 0x00FF0000
     POSX_INIT: .word 55
-    POSY_INIT: .word 220
+    POSY_INIT: .word 184
     ENEMY_X: .word 60
     ENEMY_Y: .word 30
 
 .text
-
 main:
 
 # Configs iniciais
@@ -134,7 +134,6 @@ endgame:
 # FUNÇÕES ===========================================================================================
 
 drawpx: 
-
     # Função para desenhar pixel na tela
     # Registrador $20 = EIXO X
     # Registrador $21 = EIXO Y
