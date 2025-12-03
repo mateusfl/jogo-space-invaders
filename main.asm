@@ -7,6 +7,110 @@
     POSY_INIT: .word 184
     ENEMY_X: .word 60
     ENEMY_Y: .word 30
+    
+    # Alien sprite: 11x8 pixels (armazenado linha por linha)
+    ALIEN_SPRITE:
+        # Linha 0:
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00000000
+        # Linha 1:
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00000000
+        # Linha 2:
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00000000
+        # Linha 3:
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00000000
+        # Linha 4:
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        # Linha 5:
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00FFFFFF
+        # Linha 6:
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00040404
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00FFFFFF
+        # Linha 7:
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00FFFFFF
+        .word 0x00FFFFFF
+        .word 0x00000000
+        .word 0x00000000
+        .word 0x00000000
+        
+    # PLAYER_SPRITE
+
+    ALIEN_WIDTH: .word 11
+    ALIEN_HEIGHT: .word 8
 
 .text
 main:
@@ -169,94 +273,95 @@ draw_line:
         jr $31
 
 draw_enemy:
-    # Desenha inimigo
-    # Formato: Antenas (2 pixels) + Corpo largo (12 pixels) + Pernas (4 pixels)
-    #     #    #
-    #  ############
-    #  ############
-    #     ## ##
+    # Desenha inimigo usando sprite armazenado em memória
+    # Sprite: 11x8 pixels armazenado em ALIEN_SPRITE
     
     # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Carregar cor do inimigo
-    lw $12, COR_ENEMY      # Cor do inimigo
+    # Carregar endereço base do sprite
+    la $8, ALIEN_SPRITE        # $8 = endereço base do sprite
     
-    # === ANTENAS (2 linhas, 2 pixels cada, nas laterais) ===
-    # Antena esquerda - Linha 0
-    lw $20, ENEMY_X
-    addi $20, $20, 2       # Offset para antena esquerda
-    lw $21, ENEMY_Y        # Y inicial
-    addi $23, $0, 2        # Largura da antena
-    jal draw_line
+    # Carregar dimensões
+    lw $9, ALIEN_WIDTH         # $9 = largura (11)
+    lw $10, ALIEN_HEIGHT       # $10 = altura (8)
     
-    # Antena direita - Linha 0
-    lw $20, ENEMY_X
-    addi $20, $20, 8      # Offset para antena direita
-    lw $21, ENEMY_Y        # Y inicial (mesma linha)
-    addi $23, $0, 2        # Largura da antena
-    jal draw_line
+    # Carregar posição inicial
+    lw $20, ENEMY_X            # $20 = X inicial
+    lw $21, ENEMY_Y            # $21 = Y inicial
     
-    # Antena esquerda - Linha 1
-    lw $20, ENEMY_X
-    addi $20, $20, 2
-    lw $21, ENEMY_Y
-    addi $21, $21, 1       # Próxima linha
-    addi $23, $0, 2
-    jal draw_line
+    # Variáveis para loops
+    addi $11, $0, 0            # $11 = linha atual (0 a 7)
+    addi $13, $0, 0            # $13 = coluna atual (0 a 10)
     
-    # Antena direita - Linha 1
-    lw $20, ENEMY_X
-    addi $20, $20, 8
-    lw $21, ENEMY_Y
-    addi $21, $21, 1       # Mesma linha que antena esquerda
-    addi $23, $0, 2
-    jal draw_line
+    # Loop externo: percorre linhas
+    draw_enemy_loop_y:
+        beq $11, $10, draw_enemy_end    # Se linha >= altura, termina
+        
+        # Resetar coluna para cada nova linha
+        addi $13, $0, 0
+        
+        # Loop interno: percorre colunas
+        draw_enemy_loop_x:
+            beq $13, $9, draw_enemy_next_y   # Se coluna >= largura, próxima linha
+            
+            # Calcular índice: linha * largura + coluna
+            mul $14, $11, $9                 # $14 = linha * largura
+            add $14, $14, $13                # $14 = índice
+            
+            # Calcular endereço do pixel: base + índice * 4
+            sll $14, $14, 2                  # $14 = índice * 4 (bytes)
+            add $14, $14, $8                 # $14 = endereço do pixel
+            
+            # Carregar cor do pixel
+            lw $12, 0($14)                   # $12 = cor do pixel
+            
+            # Se a cor não for preta (0x00000000), desenhar o pixel
+            beq $12, $0, draw_enemy_skip_pixel
+            
+            # Salvar valores temporários na pilha
+            # IMPORTANTE: Salvar $8, $9, $10 antes de chamar drawpx que os usa
+            addi $29, $29, -28
+            sw $20, 0($29)                   # Salvar X original
+            sw $21, 4($29)                   # Salvar Y original
+            sw $11, 8($29)                   # Salvar linha atual
+            sw $13, 12($29)                  # Salvar coluna atual
+            sw $8, 16($29)                   # Salvar endereço base do sprite
+            sw $9, 20($29)                   # Salvar ALIEN_WIDTH
+            sw $10, 24($29)                  # Salvar ALIEN_HEIGHT
+            
+            # Calcular posição X e Y na tela diretamente em $20 e $21
+            lw $20, ENEMY_X                  # Recarregar X inicial
+            add $20, $20, $13                # $20 = ENEMY_X + coluna
+            lw $21, ENEMY_Y                  # Recarregar Y inicial
+            add $21, $21, $11                # $21 = ENEMY_Y + linha
+            
+            # Desenhar pixel (drawpx usa $20, $21, $12 e modifica $9, $10, $11)
+            jal drawpx
+            
+            # Recuperar valores da pilha
+            lw $20, 0($29)                   # Restaurar X original
+            lw $21, 4($29)                   # Restaurar Y original
+            lw $11, 8($29)                   # Restaurar linha atual
+            lw $13, 12($29)                  # Restaurar coluna atual
+            lw $8, 16($29)                   # Restaurar endereço base do sprite
+            lw $9, 20($29)                   # Restaurar ALIEN_WIDTH
+            lw $10, 24($29)                  # Restaurar ALIEN_HEIGHT
+            addi $29, $29, 28
+            
+            draw_enemy_skip_pixel:
+                # Próxima coluna
+                addi $13, $13, 1
+                j draw_enemy_loop_x
+        
+        draw_enemy_next_y:
+            # Próxima linha
+            addi $11, $11, 1
+            j draw_enemy_loop_y
     
-    # === CORPO LARGO (2 linhas, 12 pixels de largura) ===
-    # Linha 2
-    lw $20, ENEMY_X
-    addi $20, $20, 1       # Centralizar: (14-12)/2 = 1
-    lw $21, ENEMY_Y
-    addi $21, $21, 2       # Linha 2
-    addi $23, $0, 10
-    jal draw_line
-    
-    # Linha 3
-    lw $20, ENEMY_X
-    addi $20, $20, 1
-    lw $21, ENEMY_Y
-    addi $21, $21, 3       # Linha 3
-    addi $23, $0, 10
-    jal draw_line
-
-    # Linha 4
-    lw $20, ENEMY_X
-    addi $20, $20, 1
-    lw $21, ENEMY_Y
-    addi $21, $21, 4       # Linha 4
-    addi $23, $0, 10
-    jal draw_line
-    
-    # === PERNAS (1 linha, 2 pixels cada, separadas) ===
-    # Perna esquerda
-    lw $20, ENEMY_X
-    addi $20, $20, 3       # Offset para perna esquerda
-    lw $21, ENEMY_Y
-    addi $21, $21, 5       # Linha 5
-    addi $23, $0, 2        # Largura da perna
-    jal draw_line
-    
-    # Perna direita
-    lw $20, ENEMY_X
-    addi $20, $20, 7       # Offset para perna direita
-    lw $21, ENEMY_Y
-    addi $21, $21, 5       # Mesma linha que perna esquerda
-    addi $23, $0, 2        # Largura da perna
-    jal draw_line
-    
-    # Recuperar $ra
-    lw $31, 0($29)
-    addi $29, $29, 4
-    jr $31
+    draw_enemy_end:
+        # Recuperar $ra
+        lw $31, 0($29)
+        addi $29, $29, 4
+        jr $31
