@@ -7,6 +7,9 @@
     POSY_INIT: .word 184
     ENEMY_X: .word 60
     ENEMY_Y: .word 30
+    ENEMY_Y2: .word 50              # Segundo inimigo: 30 (Y1) + 8 (altura sprite) + 12 (gap) = 50
+    PROJECTILE_X: .word 0
+    PROJECTILE_Y: .word 0
     
     # Alien sprite: 11x8 pixels (armazenado linha por linha)
     ALIEN_SPRITE:
@@ -206,10 +209,9 @@
         .word 0x00FFFFFF
         .word 0x00FFFFFF
 
-    ALIEN_WIDTH: .word 11
-    ALIEN_HEIGHT: .word 8
-    PLAYER_WIDTH: .word 11
-    PLAYER_HEIGHT: .word 8
+    # Dimensões compartilhadas (player e enemy têm as mesmas dimensões)
+    SPRITE_WIDTH: .word 11
+    SPRITE_HEIGHT: .word 8
 
 .text
 main:
@@ -262,7 +264,7 @@ game_loop:
     # Atualizar ENEMY_X na memória com o valor do loop
     sw $18, ENEMY_X
     
-    jal draw_enemy
+    jal draw_enemies            # Desenhar dois inimigos
     jal timer
 
     addi $18, $18, 4           # Incrementar posição X do enemy
@@ -363,26 +365,24 @@ draw_entity:
     
     draw_entity_player:
         la $22, PLAYER_SPRITE        # $22 = endereço base do sprite
-        lw $23, PLAYER_WIDTH        # $23 = largura
-        lw $24, PLAYER_HEIGHT       # $24 = altura
+        lw $23, SPRITE_WIDTH         # $23 = largura (compartilhada)
+        lw $24, SPRITE_HEIGHT        # $24 = altura (compartilhada)
         add $20, $0, $19             # Usar $19 (X do player) em $20 para compatibilidade
         j draw_entity_start
     
     draw_entity_enemy:
         la $22, ALIEN_SPRITE         # $22 = endereço base do sprite
-        lw $23, ALIEN_WIDTH         # $23 = largura
-        lw $24, ALIEN_HEIGHT        # $24 = altura
+        lw $23, SPRITE_WIDTH         # $23 = largura (compartilhada)
+        lw $24, SPRITE_HEIGHT        # $24 = altura (compartilhada)
         j draw_entity_start
     
     draw_entity_projectile:
         # TODO: Implementar quando projectile sprite estiver pronto
         # la $22, PROJECTILE_SPRITE
-        # lw $23, PROJECTILE_WIDTH
-        # lw $24, PROJECTILE_HEIGHT
         # Por enquanto, usar enemy como placeholder
         la $22, ALIEN_SPRITE
-        lw $23, ALIEN_WIDTH
-        lw $24, ALIEN_HEIGHT
+        lw $23, SPRITE_WIDTH         # $23 = largura (compartilhada)
+        lw $24, SPRITE_HEIGHT        # $24 = altura (compartilhada)
         j draw_entity_start
     
     draw_entity_start:
@@ -475,19 +475,40 @@ draw_entity:
         
         jr $31                            # Retornar usando $ra restaurado
 
-# Função para desenhar inimigo usando draw_entity
-draw_enemy:
+# Função para desenhar um inimigo em posição específica
+# Parâmetros: $20 = X, $21 = Y
+draw_enemy_at:
     # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
     # Preparar parâmetros para draw_entity
-    lw $20, ENEMY_X            # $20 = X inicial (carregar da memória)
-    lw $21, ENEMY_Y            # $21 = Y inicial
+    # $20 e $21 já estão configurados pelo chamador
     addi $25, $0, 1            # $25 = 1 (tipo: enemy)
     
     # Chamar função genérica
     jal draw_entity
+    
+    # Recuperar $ra
+    lw $31, 0($29)
+    addi $29, $29, 4
+    jr $31
+
+# Função para desenhar dois inimigos (um abaixo do outro com 12 pixels de gap)
+draw_enemies:
+    # Salvar $ra na pilha
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    # Desenhar primeiro inimigo
+    lw $20, ENEMY_X            # $20 = X inicial
+    lw $21, ENEMY_Y            # $21 = Y inicial (primeiro inimigo)
+    jal draw_enemy_at
+    
+    # Desenhar segundo inimigo (12 pixels abaixo)
+    lw $20, ENEMY_X            # $20 = X inicial (mesmo X)
+    lw $21, ENEMY_Y2           # $21 = Y inicial (segundo inimigo, já calculado com gap)
+    jal draw_enemy_at
     
     # Recuperar $ra
     lw $31, 0($29)
@@ -512,16 +533,19 @@ draw_player:
     addi $29, $29, 4
     jr $31
 
-# Função para desenhar projétil usando draw_entity (preparado para futuro)
+# Função para desenhar projétil usando draw_entity
+# Usa registradores separados: $17 para X do projétil, $16 para Y do projétil
 draw_projectile:
     # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
     # Preparar parâmetros para draw_entity
-    # TODO: Carregar posição do projétil quando implementado
-    # lw $20, PROJECTILE_X      # $20 = X inicial
-    # lw $21, PROJECTILE_Y      # $21 = Y inicial
+    # Usar registradores separados para não conflitar com outras entidades
+    lw $17, PROJECTILE_X       # $17 = X inicial do projétil
+    lw $16, PROJECTILE_Y       # $16 = Y inicial do projétil
+    add $20, $0, $17           # Copiar para $20 (usado por draw_entity)
+    add $21, $0, $16           # Copiar para $21 (usado por draw_entity)
     addi $25, $0, 2            # $25 = 2 (tipo: projectile)
     
     # Chamar função genérica
