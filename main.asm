@@ -8,7 +8,7 @@
     ENEMY_X: .word 60
     ENEMY_Y: .word 30
     
-    # Alien sprite: 11x8 pixels (armazenado linha por linha)
+    # Alien sprite: 11x8 pixels (linha por linha)
     ALIEN_SPRITE:
         # Linha 0:
         .word 0x00000000
@@ -109,6 +109,7 @@
         
     # PLAYER_SPRITE
 
+    # TODO: Atualizar para tamanho de entidade (todo mundo tem o mesmo tamanho)
     ALIEN_WIDTH: .word 11
     ALIEN_HEIGHT: .word 8
 
@@ -145,7 +146,7 @@ g_stars:
 
     j g_stars
 
-# Inicializador Player
+# Inicializador Player (TODO: Atualizar para draw_entity depois)
 l_player:
     # Desenha nave
     # Estrutura: Torre (2 linhas) + Corpo médio (2 linhas) + Base larga (4 linhas)
@@ -163,21 +164,21 @@ l_player:
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # === TORRE (2 linhas, 4 pixels de largura, centralizada) ===
-    # Linha 0 da torre
+    # TORRE (2 linhas, 4 pixels de largura, centralizada)
+    # Linha 0
     lw $20, POSX_INIT
     addi $20, $20, 8         # Centralizar: (20-4)/2 = 8
     addi $23, $0, 2          # Largura da torre
     jal draw_line
     
-    # Linha 1 da torre
+    # Linha 1
     lw $20, POSX_INIT
     addi $20, $20, 8
     addi $21, $21, 1
     addi $23, $0, 2
     jal draw_line
     
-    # === CORPO MÉDIO (2 linhas, 8 pixels de largura) ===
+    # CORPO MÉDIO (2 linhas, 8 pixels de largura)
     # Linha 2
     lw $20, POSX_INIT
     addi $20, $20, 6         # Centralizar: (20-8)/2 = 6
@@ -192,7 +193,7 @@ l_player:
     addi $23, $0, 6
     jal draw_line
     
-    # === BASE LARGA (4 linhas, 16 pixels de largura) ===
+    # BASE LARGA (4 linhas, 16 pixels de largura)
     # Linha 4
     lw $20, POSX_INIT
     addi $20, $20, 2         # Centralizar: (20-16)/2 = 2
@@ -251,7 +252,7 @@ drawpx:
     add $11, $11, $9
 
     sw $12, 0($11)
-    # sw $12, 2048($11)     # Salvar cenario em um outro espaço da memoria caso queira recuperar
+    # sw $12, 2048($11)     # TODO: Salvar cenario em um outro espaço da memoria caso queira recuperar
     jr $31
 
 # Função para desenhar uma linha horizontal
@@ -272,15 +273,13 @@ draw_line:
         addi $29, $29, 4
         jr $31
 
-draw_enemy:
-    # Desenha inimigo usando sprite armazenado em memória
+draw_enemy: # TODO: generalizar para draw_entity depois
     # Sprite: 11x8 pixels armazenado em ALIEN_SPRITE
     
     # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Carregar endereço base do sprite
     la $8, ALIEN_SPRITE        # $8 = endereço base do sprite
     
     # Carregar dimensões
@@ -321,7 +320,6 @@ draw_enemy:
             beq $12, $0, draw_enemy_skip_pixel
             
             # Salvar valores temporários na pilha
-            # IMPORTANTE: Salvar $8, $9, $10 antes de chamar drawpx que os usa
             addi $29, $29, -28
             sw $20, 0($29)                   # Salvar X original
             sw $21, 4($29)                   # Salvar Y original
@@ -337,26 +335,23 @@ draw_enemy:
             lw $21, ENEMY_Y                  # Recarregar Y inicial
             add $21, $21, $11                # $21 = ENEMY_Y + linha
             
-            # Desenhar pixel (drawpx usa $20, $21, $12 e modifica $9, $10, $11)
+            # Desenhar pixel
             jal drawpx
             
-            # Recuperar valores da pilha
-            lw $20, 0($29)                   # Restaurar X original
-            lw $21, 4($29)                   # Restaurar Y original
-            lw $11, 8($29)                   # Restaurar linha atual
-            lw $13, 12($29)                  # Restaurar coluna atual
-            lw $8, 16($29)                   # Restaurar endereço base do sprite
-            lw $9, 20($29)                   # Restaurar ALIEN_WIDTH
-            lw $10, 24($29)                  # Restaurar ALIEN_HEIGHT
+            lw $20, 0($29)                   # X original
+            lw $21, 4($29)                   # Y original
+            lw $11, 8($29)                   # linha atual
+            lw $13, 12($29)                  # coluna atual
+            lw $8, 16($29)                   # endereço base do sprite
+            lw $9, 20($29)                   # ALIEN_WIDTH
+            lw $10, 24($29)                  # ALIEN_HEIGHT
             addi $29, $29, 28
             
             draw_enemy_skip_pixel:
-                # Próxima coluna
                 addi $13, $13, 1
                 j draw_enemy_loop_x
         
         draw_enemy_next_y:
-            # Próxima linha
             addi $11, $11, 1
             j draw_enemy_loop_y
     
