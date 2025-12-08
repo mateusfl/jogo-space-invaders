@@ -8,8 +8,7 @@
     ENEMY_X: .word 60
     ENEMY_Y: .word 30
     ENEMY_Y2: .word 50              # Segundo inimigo: 30 (Y1) + 8 (altura sprite) + 12 (gap) = 50
-    PROJECTILE_X: .word 0
-    PROJECTILE_Y: .word 0
+    ENEMY_X_PREV: .word 60          # Posição X anterior dos inimigos (para apagar)
     
     # Alien sprite: 11x8 pixels (armazenado linha por linha)
     ALIEN_SPRITE:
@@ -77,21 +76,31 @@ g_stars:
 
 init_game_loop:
     lw $18, ENEMY_X            # $18 = controle do loop (posição X do enemy)
+    addi $8, $0, 0
 
 # game loop
 game_loop:
+    # Apagar player antes de desenhar novamente
+    jal erase_player
     jal draw_player
     jal timer
 
-    beq $18, 128, endgame
+    beq $8, 6, endgame
+
+    # Apagar inimigos na posição anterior antes de desenhar na nova posição
+    jal erase_enemies
     
     # Atualizar ENEMY_X na memória com o valor do loop
     sw $18, ENEMY_X
     
+    # Atualizar ENEMY_X_PREV para a próxima iteração
+    sw $18, ENEMY_X_PREV
+    
     jal draw_enemies            # Desenhar dois inimigos
     jal timer
 
-    addi $18, $18, 4           # Incrementar posição X do enemy
+    addi $18, $18, 14           # Incrementar posição X do enemy
+    addi $8, $8, 1
     j game_loop
 
 
@@ -103,7 +112,7 @@ endgame:
 # FUNÇÕES ===========================================================================================
 
 timer:
-    addi $25, $0, 50000
+    addi $25, $0, 500000
     fortimer: beq $25, $0, fimtimer
         nop
         nop
@@ -148,15 +157,15 @@ draw_line:
 
 # Função genérica para desenhar entidade usando sprite armazenado em memória
 # Parâmetros:
-#   $19 = X inicial na tela (player) ou $20 = X inicial (enemy/projectile)
+#   $19 = X inicial na tela (player) ou $20 = X inicial (enemy)
 #   $21 = Y inicial na tela
-#   $25 = tipo de entidade (0=player, 1=enemy, 2=projectile)
+#   $25 = tipo de entidade (0=player, 1=enemy)
 draw_entity:
     # Salvar $ra e parâmetros originais na pilha
     # Estrutura da pilha (de cima para baixo):
     # 0($29): $ra (endereço de retorno)
     # 4($29): $19 (X player)
-    # 8($29): $20 (X enemy/projectile)
+    # 8($29): $20 (X enemy)
     # 12($29): $21 (Y)
     # 16($29): $25 (tipo)
     # 20($29): $22 (sprite) - será salvo depois
@@ -166,23 +175,19 @@ draw_entity:
     addi $29, $29, -32               # Reservar espaço para tudo de uma vez
     sw $31, 0($29)                   # Salvar $ra primeiro (no topo)
     sw $19, 4($29)                   # Salvar X inicial (player)
-    sw $20, 8($29)                   # Salvar X inicial (enemy/projectile)
+    sw $20, 8($29)                   # Salvar X inicial (enemy)
     sw $21, 12($29)                  # Salvar Y inicial
     sw $25, 16($29)                  # Salvar tipo de entidade
     
     # Selecionar sprite e dimensões baseado no tipo
     # $25 = 0: player
     # $25 = 1: enemy
-    # $25 = 2: projectile (futuro)
     
     addi $14, $0, 0                  # $14 = 0 (player)
     beq $25, $14, draw_entity_player
     
     addi $14, $0, 1                  # $14 = 1 (enemy)
     beq $25, $14, draw_entity_enemy
-    
-    addi $14, $0, 2                  # $14 = 2 (projectile)
-    beq $25, $14, draw_entity_projectile
     
     # Se chegou aqui, tipo inválido - usar enemy como padrão
     j draw_entity_enemy
@@ -196,15 +201,6 @@ draw_entity:
     
     draw_entity_enemy:
         la $22, ALIEN_SPRITE         # $22 = endereço base do sprite
-        lw $23, SPRITE_WIDTH         # $23 = largura (compartilhada)
-        lw $24, SPRITE_HEIGHT        # $24 = altura (compartilhada)
-        j draw_entity_start
-    
-    draw_entity_projectile:
-        # TODO: Implementar quando projectile sprite estiver pronto
-        # la $22, PROJECTILE_SPRITE
-        # Por enquanto, usar enemy como placeholder
-        la $22, ALIEN_SPRITE
         lw $23, SPRITE_WIDTH         # $23 = largura (compartilhada)
         lw $24, SPRITE_HEIGHT        # $24 = altura (compartilhada)
         j draw_entity_start
@@ -289,7 +285,7 @@ draw_entity:
         # Recuperar parâmetros originais (ordem inversa do salvamento)
         lw $31, 0($29)                   # Restaurar $ra PRIMEIRO (do topo)
         lw $19, 4($29)                   # Restaurar X inicial (player)
-        lw $20, 8($29)                   # Restaurar X inicial (enemy/projectile)
+        lw $20, 8($29)                   # Restaurar X inicial (enemy)
         lw $21, 12($29)                  # Restaurar Y inicial
         lw $25, 16($29)                  # Restaurar tipo de entidade
         lw $22, 20($29)                  # Restaurar endereço base do sprite
@@ -318,6 +314,25 @@ draw_enemy_at:
     addi $29, $29, 4
     jr $31
 
+# Função para apagar um inimigo em posição específica
+# Parâmetros: $20 = X, $21 = Y
+erase_enemy_at:
+    # Salvar $ra na pilha
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    # Preparar parâmetros para erase_entity
+    # $20 e $21 já estão configurados pelo chamador
+    addi $25, $0, 1            # $25 = 1 (tipo: enemy)
+    
+    # Chamar função genérica
+    jal erase_entity
+    
+    # Recuperar $ra
+    lw $31, 0($29)
+    addi $29, $29, 4
+    jr $31
+
 # Função para desenhar dois inimigos (um abaixo do outro com 12 pixels de gap)
 draw_enemies:
     # Salvar $ra na pilha
@@ -333,6 +348,27 @@ draw_enemies:
     lw $20, ENEMY_X            # $20 = X inicial (mesmo X)
     lw $21, ENEMY_Y2           # $21 = Y inicial (segundo inimigo, já calculado com gap)
     jal draw_enemy_at
+    
+    # Recuperar $ra
+    lw $31, 0($29)
+    addi $29, $29, 4
+    jr $31
+
+# Função para apagar dois inimigos (um abaixo do outro com 12 pixels de gap)
+erase_enemies:
+    # Salvar $ra na pilha
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    # Apagar primeiro inimigo (usando posição anterior)
+    lw $20, ENEMY_X_PREV       # $20 = X anterior
+    lw $21, ENEMY_Y            # $21 = Y inicial (primeiro inimigo)
+    jal erase_enemy_at
+    
+    # Apagar segundo inimigo (usando posição anterior)
+    lw $20, ENEMY_X_PREV       # $20 = X anterior (mesmo X)
+    lw $21, ENEMY_Y2           # $21 = Y inicial (segundo inimigo, já calculado com gap)
+    jal erase_enemy_at
     
     # Recuperar $ra
     lw $31, 0($29)
@@ -357,25 +393,120 @@ draw_player:
     addi $29, $29, 4
     jr $31
 
-# Função para desenhar projétil usando draw_entity
-# Usa registradores separados: $17 para X do projétil, $16 para Y do projétil
-draw_projectile:
+# Função para apagar player usando erase_entity
+erase_player:
     # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Preparar parâmetros para draw_entity
-    # Usar registradores separados para não conflitar com outras entidades
-    lw $17, PROJECTILE_X       # $17 = X inicial do projétil
-    lw $16, PROJECTILE_Y       # $16 = Y inicial do projétil
-    add $20, $0, $17           # Copiar para $20 (usado por draw_entity)
-    add $21, $0, $16           # Copiar para $21 (usado por draw_entity)
-    addi $25, $0, 2            # $25 = 2 (tipo: projectile)
+    # Preparar parâmetros para erase_entity
+    lw $19, POSX_INIT          # $19 = X inicial (player usa $19)
+    lw $21, POSY_INIT          # $21 = Y inicial
+    addi $25, $0, 0            # $25 = 0 (tipo: player)
     
     # Chamar função genérica
-    jal draw_entity
-    
+    jal erase_entity
     # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
+
+# Função para apagar uma entidade (desenhar com cor preta)
+# Parâmetros:
+#   $19 = X inicial na tela (player) ou $20 = X inicial (enemy)
+#   $21 = Y inicial na tela
+#   $25 = tipo de entidade (0=player, 1=enemy)
+erase_entity:
+    # Salvar $ra na pilha
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    # Salvar parâmetros originais
+    addi $29, $29, -16
+    sw $19, 0($29)                   # Salvar X inicial (player)
+    sw $20, 4($29)                   # Salvar X inicial (enemy)
+    sw $21, 8($29)                   # Salvar Y inicial
+    sw $25, 12($29)                  # Salvar tipo de entidade
+    
+    # Selecionar sprite e dimensões baseado no tipo
+    addi $14, $0, 0                  # $14 = 0 (player)
+    beq $25, $14, erase_entity_player
+    
+    # Se não for player, é enemy
+    j erase_entity_enemy
+    
+    erase_entity_player:
+        lw $23, SPRITE_WIDTH         # $23 = largura
+        lw $24, SPRITE_HEIGHT        # $24 = altura
+        add $20, $0, $19             # Usar $19 (X do player) em $20
+        j erase_entity_start
+    
+    erase_entity_enemy:
+        lw $23, SPRITE_WIDTH         # $23 = largura
+        lw $24, SPRITE_HEIGHT        # $24 = altura
+        j erase_entity_start
+    
+    erase_entity_start:
+        # Salvar X e Y iniciais em registradores temporários que não serão modificados
+        # Usar $16 e $17 para preservar X e Y (não são modificados por drawpx)
+        add $16, $0, $20                 # $16 = X inicial (preservar)
+        add $17, $0, $21                 # $17 = Y inicial (preservar)
+        
+        # Variáveis para loops
+        addi $11, $0, 0                  # $11 = linha atual
+        addi $13, $0, 0                  # $13 = coluna atual
+        addi $12, $0, 0                  # $12 = cor preta (0x00000000)
+        
+        # Loop externo: percorre linhas
+        erase_entity_loop_y:
+            beq $11, $24, erase_entity_end    # Se linha >= altura, termina
+            
+            # Resetar coluna para cada nova linha
+            addi $13, $0, 0
+            
+            # Loop interno: percorre colunas
+            erase_entity_loop_x:
+                beq $13, $23, erase_entity_next_y   # Se coluna >= largura, próxima linha
+                
+                # Salvar valores temporários na pilha antes de chamar drawpx
+                addi $29, $29, -8
+                sw $11, 0($29)                   # Salvar linha atual
+                sw $13, 4($29)                   # Salvar coluna atual
+                
+                # Calcular posição X e Y na tela usando valores preservados
+                add $20, $16, $13               # $20 = X inicial + coluna
+                add $21, $17, $11                # $21 = Y inicial + linha
+                
+                # Desenhar pixel preto (apagar)
+                jal drawpx
+                
+                # Recuperar valores da pilha
+                lw $11, 0($29)                   # Restaurar linha atual
+                lw $13, 4($29)                   # Restaurar coluna atual
+                addi $29, $29, 8
+                
+                # Próxima coluna
+                addi $13, $13, 1
+                j erase_entity_loop_x
+        
+        erase_entity_next_y:
+            # Próxima linha
+            addi $11, $11, 1
+            j erase_entity_loop_y
+    
+    erase_entity_end:
+        # Restaurar X e Y originais (já estão preservados em $16 e $17)
+        add $20, $0, $16                 # Restaurar X inicial
+        add $21, $0, $17                 # Restaurar Y inicial
+        
+        # Recuperar parâmetros originais
+        lw $19, 0($29)                   # Restaurar X inicial (player)
+        lw $20, 4($29)                   # Restaurar X inicial (enemy)
+        lw $21, 8($29)                   # Restaurar Y inicial
+        lw $25, 12($29)                  # Restaurar tipo de entidade
+        addi $29, $29, 16
+        
+        # Recuperar $ra
+        lw $31, 0($29)
+        addi $29, $29, 4
+        jr $31
