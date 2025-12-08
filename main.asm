@@ -13,201 +13,25 @@
     
     # Alien sprite: 11x8 pixels (armazenado linha por linha)
     ALIEN_SPRITE:
-        # Linha 0:
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00000000
-        # Linha 1:
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        # Linha 2:
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00000000
-        # Linha 3:
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00000000
-        # Linha 4:
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        # Linha 5:
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00FFFFFF
-        # Linha 6:
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00040404
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00FFFFFF
-        # Linha 7:
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        
+        .word	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00FFFFFF
+        .word	0x00000000	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00000000
+        .word	0x00000000	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00000000
+        .word	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00000000
+        .word	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF
+        .word	0x00FFFFFF	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00FFFFFF
+        .word	0x00FFFFFF	0x00000000	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00000000	0x00FFFFFF
+        .word	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00000000	0x00000000	0x00000000
+											
     # Player sprite: 11x8 pixels (armazenado linha por linha)
     PLAYER_SPRITE:
-        # Linha 0:
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        # Linha 1:
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        # Linha 2:
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        # Linha 3:
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00000000
-        .word 0x00000000
-        .word 0x00010101
-        .word 0x00000000
-        # Linha 4:
-        .word 0x00000000
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00000000
-        # Linha 5:
-        .word 0x00FDFDFD
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        # Linha 6:
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FBFBFB
-        .word 0x00FFFFFF
-        # Linha 7:
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
-        .word 0x00FFFFFF
+        .word	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000
+        .word	0x00000000	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00000000
+        .word	0x00000000	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00000000
+        .word	0x00000000	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00000000
+        .word	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000
+        .word	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF
+        .word	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF
+        .word	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF
 
     # Dimensões compartilhadas (player e enemy têm as mesmas dimensões)
     SPRITE_WIDTH: .word 11
@@ -279,7 +103,7 @@ endgame:
 # FUNÇÕES ===========================================================================================
 
 timer:
-    addi $25, $0, 500
+    addi $25, $0, 50000
     fortimer: beq $25, $0, fimtimer
         nop
         nop
