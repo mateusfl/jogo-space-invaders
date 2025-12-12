@@ -5,10 +5,11 @@
     COR_ENEMY: .word 0x00FF0000
     POSX_INIT: .word 55
     POSY_INIT: .word 184
-    ENEMY_X: .word 60
+    ENEMY_X: .word 15
     ENEMY_Y: .word 30
     ENEMY_Y2: .word 50              # Segundo inimigo: 30 (Y1) + 8 (altura sprite) + 12 (gap) = 50
-    ENEMY_X_PREV: .word 60          # Posição X anterior dos inimigos (para apagar)
+    ENEMY_Y3: .word 70              # Terceiro inimigo: 50 (Y2) + 8 (altura sprite) + 12 (gap) = 70
+    ENEMY_X_PREV: .word 15          # Posição X anterior dos inimigos (para apagar)
     
     # Alien sprite: 11x8 pixels (armazenado linha por linha)
     ALIEN_SPRITE:
@@ -112,7 +113,7 @@ endgame:
 # FUNÇÕES ===========================================================================================
 
 timer:
-    addi $25, $0, 500000
+    addi $25, $0, 80000
     fortimer: beq $25, $0, fimtimer
         nop
         nop
@@ -333,47 +334,181 @@ erase_enemy_at:
     addi $29, $29, 4
     jr $31
 
-# Função para desenhar dois inimigos (um abaixo do outro com 12 pixels de gap)
+# Função para desenhar 5 colunas × 3 fileiras de inimigos (15 inimigos total)
+# Gap de 12 pixels entre fileiras e 6 pixels entre colunas
 draw_enemies:
     # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Desenhar primeiro inimigo
-    lw $20, ENEMY_X            # $20 = X inicial
-    lw $21, ENEMY_Y            # $21 = Y inicial (primeiro inimigo)
-    jal draw_enemy_at
+    # Salvar registradores que serão usados nos loops
+    addi $29, $29, -16
+    sw $16, 0($29)                   # Salvar $16 (contador de colunas)
+    sw $17, 4($29)                   # Salvar $17 (contador de fileiras)
+    sw $18, 8($29)                   # Salvar $18 (X atual)
+    sw $19, 12($29)                  # Salvar $19 (Y atual)
     
-    # Desenhar segundo inimigo (12 pixels abaixo)
-    lw $20, ENEMY_X            # $20 = X inicial (mesmo X)
-    lw $21, ENEMY_Y2           # $21 = Y inicial (segundo inimigo, já calculado com gap)
-    jal draw_enemy_at
+    # Carregar X base
+    lw $18, ENEMY_X                  # $18 = X base (primeira coluna)
     
-    # Recuperar $ra
-    lw $31, 0($29)
-    addi $29, $29, 4
-    jr $31
+    # Loop externo: percorre fileiras (3 fileiras)
+    addi $17, $0, 0                  # $17 = contador de fileiras (0, 1, 2)
+    
+    draw_enemies_loop_y:
+        beq $17, 3, draw_enemies_end_y   # Se fileira >= 3, termina
+        
+        # Determinar Y baseado na fileira
+        beq $17, $0, draw_enemies_y1      # Se fileira == 0, usar ENEMY_Y
+        addi $14, $0, 1
+        beq $17, $14, draw_enemies_y2    # Se fileira == 1, usar ENEMY_Y2
+        # Se fileira == 2, usar ENEMY_Y3
+        lw $19, ENEMY_Y3
+        j draw_enemies_y_done
+        
+        draw_enemies_y1:
+            lw $19, ENEMY_Y
+            j draw_enemies_y_done
+        
+        draw_enemies_y2:
+            lw $19, ENEMY_Y2
+            j draw_enemies_y_done
+        
+        draw_enemies_y_done:
+            # Loop interno: percorre colunas (5 colunas)
+            addi $16, $0, 0              # $16 = contador de colunas (0, 1, 2, 3, 4)
+            
+            draw_enemies_loop_x:
+                beq $16, 5, draw_enemies_end_x   # Se coluna >= 5, próxima fileira
+                
+                # Calcular X atual: X_base + coluna * (largura + gap)
+                # largura = 11, gap = 6, então offset = coluna * 17
+                addi $14, $0, 17                 # $14 = 17 (11 + 6)
+                mul $15, $16, $14                # $15 = coluna * 17
+                add $20, $18, $15                # $20 = X_base + offset
+                add $21, $0, $19                  # $21 = Y da fileira atual
+                
+                # Salvar valores antes de chamar draw_enemy_at
+                addi $29, $29, -8
+                sw $16, 0($29)                   # Salvar contador de colunas
+                sw $17, 4($29)                   # Salvar contador de fileiras
+                
+                # Desenhar inimigo
+                jal draw_enemy_at
+                
+                # Recuperar valores
+                lw $16, 0($29)                   # Restaurar contador de colunas
+                lw $17, 4($29)                   # Restaurar contador de fileiras
+                addi $29, $29, 8
+                
+                # Próxima coluna
+                addi $16, $16, 1
+                j draw_enemies_loop_x
+            
+            draw_enemies_end_x:
+                # Próxima fileira
+                addi $17, $17, 1
+                j draw_enemies_loop_y
+    
+    draw_enemies_end_y:
+        # Recuperar registradores
+        lw $16, 0($29)                   # Restaurar $16
+        lw $17, 4($29)                   # Restaurar $17
+        lw $18, 8($29)                   # Restaurar $18
+        lw $19, 12($29)                  # Restaurar $19
+        addi $29, $29, 16
+        
+        # Recuperar $ra
+        lw $31, 0($29)
+        addi $29, $29, 4
+        jr $31
 
-# Função para apagar dois inimigos (um abaixo do outro com 12 pixels de gap)
+# Função para apagar 5 colunas × 3 fileiras de inimigos (15 inimigos total)
+# Usa posição anterior (ENEMY_X_PREV) para apagar antes de desenhar na nova posição
 erase_enemies:
     # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Apagar primeiro inimigo (usando posição anterior)
-    lw $20, ENEMY_X_PREV       # $20 = X anterior
-    lw $21, ENEMY_Y            # $21 = Y inicial (primeiro inimigo)
-    jal erase_enemy_at
+    # Salvar registradores que serão usados nos loops
+    addi $29, $29, -16
+    sw $16, 0($29)                   # Salvar $16 (contador de colunas)
+    sw $17, 4($29)                   # Salvar $17 (contador de fileiras)
+    sw $18, 8($29)                   # Salvar $18 (X anterior)
+    sw $19, 12($29)                  # Salvar $19 (Y atual)
     
-    # Apagar segundo inimigo (usando posição anterior)
-    lw $20, ENEMY_X_PREV       # $20 = X anterior (mesmo X)
-    lw $21, ENEMY_Y2           # $21 = Y inicial (segundo inimigo, já calculado com gap)
-    jal erase_enemy_at
+    # Carregar X anterior
+    lw $18, ENEMY_X_PREV             # $18 = X anterior (primeira coluna)
     
-    # Recuperar $ra
-    lw $31, 0($29)
-    addi $29, $29, 4
-    jr $31
+    # Loop externo: percorre fileiras (3 fileiras)
+    addi $17, $0, 0                  # $17 = contador de fileiras (0, 1, 2)
+    
+    erase_enemies_loop_y:
+        beq $17, 3, erase_enemies_end_y   # Se fileira >= 3, termina
+        
+        # Determinar Y baseado na fileira
+        beq $17, $0, erase_enemies_y1      # Se fileira == 0, usar ENEMY_Y
+        addi $14, $0, 1
+        beq $17, $14, erase_enemies_y2    # Se fileira == 1, usar ENEMY_Y2
+        # Se fileira == 2, usar ENEMY_Y3
+        lw $19, ENEMY_Y3
+        j erase_enemies_y_done
+        
+        erase_enemies_y1:
+            lw $19, ENEMY_Y
+            j erase_enemies_y_done
+        
+        erase_enemies_y2:
+            lw $19, ENEMY_Y2
+            j erase_enemies_y_done
+        
+        erase_enemies_y_done:
+            # Loop interno: percorre colunas (5 colunas)
+            addi $16, $0, 0              # $16 = contador de colunas (0, 1, 2, 3, 4)
+            
+            erase_enemies_loop_x:
+                beq $16, 5, erase_enemies_end_x   # Se coluna >= 5, próxima fileira
+                
+                # Calcular X atual: X_anterior + coluna * (largura + gap)
+                # largura = 11, gap = 6, então offset = coluna * 17
+                addi $14, $0, 17                 # $14 = 17 (11 + 6)
+                mul $15, $16, $14                # $15 = coluna * 17
+                add $20, $18, $15                # $20 = X_anterior + offset
+                add $21, $0, $19                  # $21 = Y da fileira atual
+                
+                # Salvar valores antes de chamar erase_enemy_at
+                addi $29, $29, -8
+                sw $16, 0($29)                   # Salvar contador de colunas
+                sw $17, 4($29)                   # Salvar contador de fileiras
+                
+                # Apagar inimigo
+                jal erase_enemy_at
+                
+                # Recuperar valores
+                lw $16, 0($29)                   # Restaurar contador de colunas
+                lw $17, 4($29)                   # Restaurar contador de fileiras
+                addi $29, $29, 8
+                
+                # Próxima coluna
+                addi $16, $16, 1
+                j erase_enemies_loop_x
+            
+            erase_enemies_end_x:
+                # Próxima fileira
+                addi $17, $17, 1
+                j erase_enemies_loop_y
+    
+    erase_enemies_end_y:
+        # Recuperar registradores
+        lw $16, 0($29)                   # Restaurar $16
+        lw $17, 4($29)                   # Restaurar $17
+        lw $18, 8($29)                   # Restaurar $18
+        lw $19, 12($29)                  # Restaurar $19
+        addi $29, $29, 16
+        
+        # Recuperar $ra
+        lw $31, 0($29)
+        addi $29, $29, 4
+        jr $31
 
 # Função para desenhar player usando draw_entity
 draw_player:
