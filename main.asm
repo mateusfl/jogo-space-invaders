@@ -10,6 +10,8 @@
     ENEMY_Y2: .word 50              # Segundo inimigo: 30 (Y1) + 8 (altura sprite) + 12 (gap) = 50
     ENEMY_Y3: .word 70              # Terceiro inimigo: 50 (Y2) + 8 (altura sprite) + 12 (gap) = 70
     ENEMY_X_PREV: .word 15          # Posição X anterior dos inimigos (para apagar)
+    ENEMY_DIRECTION: .word 1        # Direção do movimento: 1 = direita, -1 = esquerda
+    SCREEN_WIDTH: .word 128         # Largura da tela em pixels
     
     # Alien sprite: 11x8 pixels (armazenado linha por linha)
     ALIEN_SPRITE:
@@ -81,26 +83,24 @@ init_game_loop:
 
 # game loop
 game_loop:
-    # Apagar player antes de desenhar novamente
     jal erase_player
     jal draw_player
     jal timer
 
-    beq $8, 6, endgame
+    beq $8, 128, endgame
 
-    # Apagar inimigos na posição anterior antes de desenhar na nova posição
     jal erase_enemies
     
-    # Atualizar ENEMY_X na memória com o valor do loop
-    sw $18, ENEMY_X
+    lw $18, ENEMY_X
     
-    # Atualizar ENEMY_X_PREV para a próxima iteração
-    sw $18, ENEMY_X_PREV
-    
-    jal draw_enemies            # Desenhar dois inimigos
+    jal draw_enemies
     jal timer
 
-    addi $18, $18, 14           # Incrementar posição X do enemy
+    sw $18, ENEMY_X_PREV
+    
+    # Atualizar posição dos inimigos (verificar limites e inverter direção se necessário)
+    jal update_enemy_position
+    
     addi $8, $8, 1
     j game_loop
 
@@ -113,13 +113,77 @@ endgame:
 # FUNÇÕES ===========================================================================================
 
 timer:
-    addi $25, $0, 80000
+    addi $25, $0, 90000
     fortimer: beq $25, $0, fimtimer
         nop
         nop
         addi $25, $25, -1
         j fortimer
     fimtimer: jr $31
+
+# Função para atualizar posição dos inimigos com verificação de limites
+# Verifica se chegou ao fim da tela e inverte direção se necessário
+# Atualiza $18 (usado no loop principal) e ENEMY_X
+update_enemy_position:
+    # Salvar $ra na pilha
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    # Salvar registradores que serão usados
+    addi $29, $29, -8
+    sw $16, 0($29)                   # Salvar $16 (direção)
+    sw $17, 4($29)                   # Salvar $17 (X atual)
+    
+    # Carregar valores atuais
+    lw $17, ENEMY_X                  # $17 = posição X atual
+    lw $16, ENEMY_DIRECTION          # $16 = direção atual (1 ou -1)
+    
+    # Calcular limite direito: última coluna (X + 4*17 + 11) não pode ultrapassar 128
+    # X + 68 + 11 >= 128, então X >= 49
+    addi $14, $0, 49                 # $14 = limite direito (49)
+    
+    # Verificar se chegou ao limite direito (X >= 49)
+    slt $15, $17, $14                # $15 = 1 se X < 49, 0 se X >= 49
+    beq $15, $0, update_enemy_invert_right   # Se X >= 49, inverter para esquerda
+    
+    # Verificar se chegou ao limite esquerdo (X <= 0)
+    slt $15, $0, $17                 # $15 = 1 se 0 < X, 0 se X <= 0
+    beq $15, $0, update_enemy_invert_left     # Se X <= 0, inverter para direita
+    
+    # Se não chegou aos limites, continuar movimento normal
+    j update_enemy_move
+    
+    update_enemy_invert_right:
+        # Inverter direção para esquerda
+        addi $16, $0, -1
+        sw $16, ENEMY_DIRECTION
+        j update_enemy_move
+    
+    update_enemy_invert_left:
+        # Inverter direção para direita
+        addi $16, $0, 1
+        sw $16, ENEMY_DIRECTION
+        j update_enemy_move
+    
+    update_enemy_move:
+        # Mover inimigos: offset menor (2 pixels) multiplicado pela direção
+        addi $14, $0, 2               # $14 = offset de movimento (2 pixels)
+        mul $15, $16, $14             # $15 = direção * offset (2 ou -2)
+        add $17, $17, $15              # $17 = nova posição X
+        sw $17, ENEMY_X                # Atualizar ENEMY_X
+        
+        # Atualizar $18 no loop principal também (não restaurar o valor antigo)
+        add $18, $0, $17
+    
+    # Recuperar registradores (exceto $18 que foi atualizado)
+    lw $16, 0($29)                   # Restaurar $16
+    lw $17, 4($29)                   # Restaurar $17
+    addi $29, $29, 8
+    
+    # Recuperar $ra
+    lw $31, 0($29)
+    addi $29, $29, 4
+    jr $31
 
 drawpx: 
     # Função para desenhar pixel na tela
