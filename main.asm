@@ -5,6 +5,7 @@
     COR_ENEMY: .word 0x00FF0000
     POSX_INIT: .word 55
     POSY_INIT: .word 184
+    POSX_PREV: .word 55          # Posição X anterior do player (para apagar)
     ENEMY_X: .word 15
     ENEMY_Y: .word 30
     ENEMY_Y2: .word 50              # Segundo inimigo: 30 (Y1) + 8 (altura sprite) + 12 (gap) = 50
@@ -80,12 +81,6 @@
 main:
 
 # Configs iniciais
-
-    # Inicializar stack pointer (pilha) - CRÍTICO para funcionamento correto
-    # No MARS, a pilha deve começar em 0x7FFFEFFC (topo da memória de dados)
-    lui $29, 0x7FFF          # Carregar parte alta: 0x7FFF0000
-    ori $29, $29, 0xEFFC     # Completar: 0x7FFFEFFC
-    
     addi $23, $0, 50      # Quantidade de estrelas 
 
 
@@ -139,6 +134,13 @@ init_game_loop:
 
 # game loop
 game_loop:
+    # Salvar posição anterior do player antes de atualizar
+    lw $14, POSX_INIT
+    sw $14, POSX_PREV
+    
+    # checar input de teclado e atualizar posição do player
+    jal check_keyboard_input
+    
     jal erase_player
     jal draw_player
     jal timer
@@ -237,7 +239,6 @@ update_enemy_position:
     lw $17, 4($29)                   # Restaurar $17
     addi $29, $29, 8
     
-    # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
@@ -257,7 +258,6 @@ drawpx:
     add $11, $11, $9
 
     sw $12, 0($11)
-    # sw $12, 2048($11)     # Salvar cenario em um outro espaço da memoria caso queira recuperar
     jr $31
 
 # Função para desenhar uma linha horizontal
@@ -387,10 +387,8 @@ draw_entity:
     draw_entity_loop_y:
         beq $11, $24, draw_entity_end    # Se linha >= altura, termina
         
-        # Resetar coluna para cada nova linha
         addi $13, $0, 0
         
-        # Loop interno: percorre colunas
         draw_entity_loop_x:
             beq $13, $23, draw_entity_next_y   # Se coluna >= largura, próxima linha
             
@@ -402,13 +400,11 @@ draw_entity:
             sll $14, $14, 2                   # $14 = índice * 4 (bytes)
             add $14, $14, $22                 # $14 = endereço do pixel
             
-            # Carregar cor do pixel
             lw $12, 0($14)                   # $12 = cor do pixel
             
             # Se a cor não for preta (0x00000000), desenhar o pixel
             beq $12, $0, draw_entity_skip_pixel
             
-            # Salvar valores temporários na pilha antes de chamar drawpx
             addi $29, $29, -28
             sw $11, 0($29)        # Salvar linha atual
             sw $13, 4($29)        # Salvar coluna atual
@@ -428,7 +424,6 @@ draw_entity:
             
             jal drawpx
             
-            # Recuperar valores da pilha
             lw $11, 0($29)          # Restaurar linha atual
             lw $13, 4($29)          # Restaurar coluna atual
             lw $22, 8($29)          # Restaurar endereço base do sprite
@@ -439,12 +434,10 @@ draw_entity:
             addi $29, $29, 28
             
             draw_entity_skip_pixel:
-                # Próxima coluna
                 addi $13, $13, 1
                 j draw_entity_loop_x
         
         draw_entity_next_y:
-            # Próxima linha
             addi $11, $11, 1
             j draw_entity_loop_y
     
@@ -464,55 +457,43 @@ draw_entity:
 
 # Funções wrapper para desenhar splash screens (chamadas de main)
 draw_splash_screen:
-    # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Preparar parâmetros para draw_entity
     addi $20, $0, 18      # X inicial
     addi $21, $0, 16      # Y inicial
     addi $25, $0, 3       # $25 = 3 (tipo: splash screen 1)
     
-    # Chamar função genérica
     jal draw_entity
     
-    # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
 
 draw_splash_screen2:
-    # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Preparar parâmetros para draw_entity
     addi $20, $0, 18      # X inicial
     addi $21, $0, 40      # Y inicial
     addi $25, $0, 4       # $25 = 4 (tipo: splash screen 2)
     
-    # Chamar função genérica
     jal draw_entity
     
-    # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
 
 draw_splash_screen3:
-    # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Preparar parâmetros para draw_entity
     addi $20, $0, 18      # X inicial
     addi $21, $0, 60      # Y inicial
     addi $25, $0, 5       # $25 = 5 (tipo: splash screen 3)
     
-    # Chamar função genérica
     jal draw_entity
     
-    # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
@@ -520,7 +501,6 @@ draw_splash_screen3:
 # Função para desenhar um inimigo em posição específica
 # Parâmetros: $20 = X, $21 = Y
 draw_enemy_at:
-    # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
@@ -528,10 +508,8 @@ draw_enemy_at:
     # $20 e $21 já estão configurados pelo chamador
     addi $25, $0, 1            # $25 = 1 (tipo: enemy)
     
-    # Chamar função genérica
     jal draw_entity
     
-    # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
@@ -539,7 +517,6 @@ draw_enemy_at:
 # Função para apagar um inimigo em posição específica
 # Parâmetros: $20 = X, $21 = Y
 erase_enemy_at:
-    # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
@@ -551,7 +528,6 @@ erase_enemy_at:
     # Chamar função de apagar retângulo
     jal erase_rectangle
 
-    # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
@@ -559,7 +535,6 @@ erase_enemy_at:
 # Função para desenhar 5 colunas × 3 fileiras de inimigos (15 inimigos total)
 # Gap de 12 pixels entre fileiras e 6 pixels entre colunas
 draw_enemies:
-    # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
@@ -609,7 +584,6 @@ draw_enemies:
                 add $20, $18, $15                # $20 = X_base + offset
                 add $21, $0, $19                  # $21 = Y da fileira atual
                 
-                # Salvar valores antes de chamar draw_enemy_at
                 addi $29, $29, -8
                 sw $16, 0($29)                   # Salvar contador de colunas
                 sw $17, 4($29)                   # Salvar contador de fileiras
@@ -617,29 +591,24 @@ draw_enemies:
                 # Desenhar inimigo
                 jal draw_enemy_at
                 
-                # Recuperar valores
                 lw $16, 0($29)                   # Restaurar contador de colunas
                 lw $17, 4($29)                   # Restaurar contador de fileiras
                 addi $29, $29, 8
                 
-                # Próxima coluna
                 addi $16, $16, 1
                 j draw_enemies_loop_x
             
             draw_enemies_end_x:
-                # Próxima fileira
                 addi $17, $17, 1
                 j draw_enemies_loop_y
     
     draw_enemies_end_y:
-        # Recuperar registradores
         lw $16, 0($29)                   # Restaurar $16
         lw $17, 4($29)                   # Restaurar $17
         lw $18, 8($29)                   # Restaurar $18
         lw $19, 12($29)                  # Restaurar $19
         addi $29, $29, 16
         
-        # Recuperar $ra
         lw $31, 0($29)
         addi $29, $29, 4
         jr $31
@@ -647,18 +616,15 @@ draw_enemies:
 # Função para apagar 5 colunas × 3 fileiras de inimigos (15 inimigos total)
 # Usa posição anterior (ENEMY_X_PREV) para apagar antes de desenhar na nova posição
 erase_enemies:
-    # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Salvar registradores que serão usados nos loops
     addi $29, $29, -16
     sw $16, 0($29)                   # Salvar $16 (contador de colunas)
     sw $17, 4($29)                   # Salvar $17 (contador de fileiras)
     sw $18, 8($29)                   # Salvar $18 (X anterior)
     sw $19, 12($29)                  # Salvar $19 (Y atual)
     
-    # Carregar X anterior
     lw $18, ENEMY_X_PREV             # $18 = X anterior (primeira coluna)
     
     # Loop externo: percorre fileiras (3 fileiras)
@@ -705,36 +671,30 @@ erase_enemies:
                 # Apagar inimigo
                 jal erase_enemy_at
                 
-                # Recuperar valores
                 lw $16, 0($29)                   # Restaurar contador de colunas
                 lw $17, 4($29)                   # Restaurar contador de fileiras
                 addi $29, $29, 8
                 
-                # Próxima coluna
                 addi $16, $16, 1
                 j erase_enemies_loop_x
             
             erase_enemies_end_x:
-                # Próxima fileira
                 addi $17, $17, 1
                 j erase_enemies_loop_y
     
     erase_enemies_end_y:
-        # Recuperar registradores
         lw $16, 0($29)                   # Restaurar $16
         lw $17, 4($29)                   # Restaurar $17
         lw $18, 8($29)                   # Restaurar $18
         lw $19, 12($29)                  # Restaurar $19
         addi $29, $29, 16
         
-        # Recuperar $ra
         lw $31, 0($29)
         addi $29, $29, 4
         jr $31
 
 # Função para desenhar player usando draw_entity
 draw_player:
-    # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
@@ -750,14 +710,61 @@ draw_player:
     addi $29, $29, 4
     jr $31
 
-# Função para apagar player usando erase_rectangle
-erase_player:
-    # Salvar $ra na pilha
+# Função para verificar entrada do teclado e atualizar posição do player
+# Move o player para esquerda ('a') ou direita ('d')
+check_keyboard_input:
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Preparar parâmetros para erase_rectangle
-    lw $20, POSX_INIT          # $20 = X inicial
+    lui $8, 0xFFFF              # Carregar endereço base do MMIO (0xFFFF0000)
+    lw $9, 0($8)                 # Ler control register (bit 0 = ready)
+    andi $9, $9, 1               # Verificar bit 0 (ready bit)
+    beq $9, $0, check_keyboard_end   # Se não há entrada, sair
+    
+    lw $10, 4($8)                # $10 = caractere lido
+    
+    addi $11, $0, 'a'
+    beq $10, $11, move_player_left
+
+    addi $11, $0, 'd'
+    beq $10, $11, move_player_right
+
+    j check_keyboard_end
+    
+    move_player_left:
+        lw $12, POSX_INIT        # Carregar posição X atual
+        addi $12, $12, -2        # Mover 2 pixels para esquerda
+        addi $13, $0, 0          # Limite esquerdo (0)
+        slt $14, $12, $13        # Verificar se X < 0
+        bne $14, $0, check_keyboard_end   # Se saiu dos limites, não atualizar
+        sw $12, POSX_INIT        # Atualizar posição X
+        j check_keyboard_end
+    
+    move_player_right:
+        lw $12, POSX_INIT
+        lw $13, SPRITE_WIDTH
+        add $12, $12, $13        # Calcular X + largura
+        addi $12, $12, 2         # Adicionar movimento (2 pixels)
+        addi $14, $0, 128        # Largura da tela (128)
+        slt $15, $14, $12        # Verificar se X + largura + movimento > 128
+        bne $15, $0, check_keyboard_end   # Se saiu dos limites, não atualizar
+        lw $12, POSX_INIT        # Recarregar posição X atual
+        addi $12, $12, 2         # Mover 2 pixels para direita
+        sw $12, POSX_INIT        # Atualizar posição X
+        j check_keyboard_end
+    
+    check_keyboard_end:
+        lw $31, 0($29)
+        addi $29, $29, 4
+        jr $31
+
+# Função para apagar player usando erase_rectangle
+erase_player:
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    # Preparar parâmetros para erase_rectangle (usar posição anterior)
+    lw $20, POSX_PREV          # $20 = X anterior (para apagar)
     lw $21, POSY_INIT          # $21 = Y inicial
     lw $23, SPRITE_WIDTH       # $23 = largura
     lw $24, SPRITE_HEIGHT      # $24 = altura
@@ -773,7 +780,6 @@ erase_player:
 # Funções para apagar splash screens (apagar retângulos nas posições dos sprites)
 # Usar as mesmas posições que draw_entity usa internamente
 erase_splash_screen:
-    # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
@@ -792,7 +798,6 @@ erase_splash_screen:
     jr $31
 
 erase_splash_screen2:
-    # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
@@ -811,7 +816,6 @@ erase_splash_screen2:
     jr $31
 
 erase_splash_screen3:
-    # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
@@ -829,18 +833,15 @@ erase_splash_screen3:
     addi $29, $29, 4
     jr $31
 
-# Função auxiliar para apagar um retângulo (similar a erase_entity mas mais simples)
+# Função auxiliar para apagar um retângulo
 # Parâmetros: $20 = X inicial, $21 = Y inicial, $23 = largura, $24 = altura
 erase_rectangle:
-    # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Salvar X e Y iniciais em registradores temporários
     add $16, $0, $20                 # $16 = X inicial (preservar)
     add $17, $0, $21                 # $17 = Y inicial (preservar)
     
-    # Variáveis para loops
     addi $11, $0, 0                  # $11 = linha atual
     addi $13, $0, 0                  # $13 = coluna atual
     addi $12, $0, 0                  # $12 = cor preta (0x00000000)
@@ -849,10 +850,8 @@ erase_rectangle:
     erase_rectangle_loop_y:
         beq $11, $24, erase_rectangle_end    # Se linha >= altura, termina
         
-        # Resetar coluna para cada nova linha
         addi $13, $0, 0
         
-        # Loop interno: percorre colunas
         erase_rectangle_loop_x:
             beq $13, $23, erase_rectangle_next_y   # Se coluna >= largura, próxima linha
             
@@ -861,24 +860,19 @@ erase_rectangle:
             sw $11, 0($29)                   # Salvar linha atual
             sw $13, 4($29)                   # Salvar coluna atual
             
-            # Calcular posição X e Y na tela usando valores preservados
             add $20, $16, $13               # $20 = X inicial + coluna
             add $21, $17, $11                # $21 = Y inicial + linha
             
-            # Desenhar pixel preto (apagar)
             jal drawpx
             
-            # Recuperar valores da pilha
             lw $11, 0($29)                   # Restaurar linha atual
             lw $13, 4($29)                   # Restaurar coluna atual
             addi $29, $29, 8
             
-            # Próxima coluna
             addi $13, $13, 1
             j erase_rectangle_loop_x
         
         erase_rectangle_next_y:
-            # Próxima linha
             addi $11, $11, 1
             j erase_rectangle_loop_y
     
@@ -887,7 +881,6 @@ erase_rectangle:
         add $20, $0, $16                 # Restaurar X inicial
         add $21, $0, $17                 # Restaurar Y inicial
         
-        # Recuperar $ra
         lw $31, 0($29)
         addi $29, $29, 4
         jr $31
