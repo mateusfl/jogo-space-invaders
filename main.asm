@@ -103,7 +103,7 @@ splash_timer_loop:
     j splash_timer_loop
 splash_timer_end:
 
-# Apagar splash screens usando a mesma lógica de erase_entity
+# Apagar splash screens usando erase_rectangle
 jal erase_splash_screen
 jal erase_splash_screen2
 jal erase_splash_screen3
@@ -543,12 +543,13 @@ erase_enemy_at:
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Preparar parâmetros para erase_entity
+    # Preparar parâmetros para erase_rectangle
     # $20 e $21 já estão configurados pelo chamador
-    addi $25, $0, 1            # $25 = 1 (tipo: enemy)
+    lw $23, SPRITE_WIDTH         # $23 = largura
+    lw $24, SPRITE_HEIGHT        # $24 = altura
     
-    # Chamar função genérica
-    jal erase_entity
+    # Chamar função de apagar retângulo
+    jal erase_rectangle
 
     # Recuperar $ra
     lw $31, 0($29)
@@ -749,19 +750,21 @@ draw_player:
     addi $29, $29, 4
     jr $31
 
-# Função para apagar player usando erase_entity
+# Função para apagar player usando erase_rectangle
 erase_player:
     # Salvar $ra na pilha
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Preparar parâmetros para erase_entity
-    lw $19, POSX_INIT          # $19 = X inicial (player usa $19)
+    # Preparar parâmetros para erase_rectangle
+    lw $20, POSX_INIT          # $20 = X inicial
     lw $21, POSY_INIT          # $21 = Y inicial
-    addi $25, $0, 0            # $25 = 0 (tipo: player)
+    lw $23, SPRITE_WIDTH       # $23 = largura
+    lw $24, SPRITE_HEIGHT      # $24 = altura
     
-    # Chamar função genérica
-    jal erase_entity
+    # Chamar função de apagar retângulo
+    jal erase_rectangle
+    
     # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
@@ -889,102 +892,3 @@ erase_rectangle:
         addi $29, $29, 4
         jr $31
 
-# Função para apagar uma entidade (desenhar com cor preta)
-# Parâmetros:
-#   $19 = X inicial na tela (player) ou $20 = X inicial (enemy)
-#   $21 = Y inicial na tela
-#   $25 = tipo de entidade (0=player, 1=enemy)
-erase_entity:
-    # Salvar $ra na pilha
-    addi $29, $29, -4
-    sw $31, 0($29)
-    
-    # Salvar parâmetros originais
-    addi $29, $29, -16
-    sw $19, 0($29)                   # Salvar X inicial (player)
-    sw $20, 4($29)                   # Salvar X inicial (enemy)
-    sw $21, 8($29)                   # Salvar Y inicial
-    sw $25, 12($29)                  # Salvar tipo de entidade
-    
-    # Selecionar sprite e dimensões baseado no tipo
-    addi $14, $0, 0                  # $14 = 0 (player)
-    beq $25, $14, erase_entity_player
-    
-    # Se não for player, é enemy
-    j erase_entity_enemy
-    
-    erase_entity_player:
-        lw $23, SPRITE_WIDTH         # $23 = largura
-        lw $24, SPRITE_HEIGHT        # $24 = altura
-        add $20, $0, $19             # Usar $19 (X do player) em $20
-        j erase_entity_start
-    
-    erase_entity_enemy:
-        lw $23, SPRITE_WIDTH         # $23 = largura
-        lw $24, SPRITE_HEIGHT        # $24 = altura
-        j erase_entity_start
-    
-    erase_entity_start:
-        # Salvar X e Y iniciais em registradores temporários que não serão modificados
-        # Usar $16 e $17 para preservar X e Y (não são modificados por drawpx)
-        add $16, $0, $20                 # $16 = X inicial (preservar)
-        add $17, $0, $21                 # $17 = Y inicial (preservar)
-        
-        # Variáveis para loops
-        addi $11, $0, 0                  # $11 = linha atual
-        addi $13, $0, 0                  # $13 = coluna atual
-        addi $12, $0, 0                  # $12 = cor preta (0x00000000)
-        
-        # Loop externo: percorre linhas
-        erase_entity_loop_y:
-            beq $11, $24, erase_entity_end    # Se linha >= altura, termina
-            
-            # Resetar coluna para cada nova linha
-            addi $13, $0, 0
-            
-            # Loop interno: percorre colunas
-            erase_entity_loop_x:
-                beq $13, $23, erase_entity_next_y   # Se coluna >= largura, próxima linha
-                
-                # Salvar valores temporários na pilha antes de chamar drawpx
-                addi $29, $29, -8
-                sw $11, 0($29)                   # Salvar linha atual
-                sw $13, 4($29)                   # Salvar coluna atual
-                
-                # Calcular posição X e Y na tela usando valores preservados
-                add $20, $16, $13               # $20 = X inicial + coluna
-                add $21, $17, $11                # $21 = Y inicial + linha
-                
-                # Desenhar pixel preto (apagar)
-                jal drawpx
-                
-                # Recuperar valores da pilha
-                lw $11, 0($29)                   # Restaurar linha atual
-                lw $13, 4($29)                   # Restaurar coluna atual
-                addi $29, $29, 8
-                
-                # Próxima coluna
-                addi $13, $13, 1
-                j erase_entity_loop_x
-        
-        erase_entity_next_y:
-            # Próxima linha
-            addi $11, $11, 1
-            j erase_entity_loop_y
-    
-    erase_entity_end:
-        # Restaurar X e Y originais (já estão preservados em $16 e $17)
-        add $20, $0, $16                 # Restaurar X inicial
-        add $21, $0, $17                 # Restaurar Y inicial
-        
-        # Recuperar parâmetros originais
-        lw $19, 0($29)                   # Restaurar X inicial (player)
-        lw $20, 4($29)                   # Restaurar X inicial (enemy)
-        lw $21, 8($29)                   # Restaurar Y inicial
-        lw $25, 12($29)                  # Restaurar tipo de entidade
-        addi $29, $29, 16
-        
-        # Recuperar $ra
-        lw $31, 0($29)
-        addi $29, $29, 4
-        jr $31
