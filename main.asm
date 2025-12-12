@@ -93,6 +93,21 @@ jal draw_splash_screen
 jal draw_splash_screen2
 jal draw_splash_screen3
 
+# timer maior para o splash screen (não precisa ser função)
+addi $25, $0, 2000000          # Timer maior para splash screen
+splash_timer_loop:
+    beq $25, $0, splash_timer_end
+    nop
+    nop
+    addi $25, $25, -1
+    j splash_timer_loop
+splash_timer_end:
+
+# Apagar splash screens usando a mesma lógica de erase_entity
+jal erase_splash_screen
+jal erase_splash_screen2
+jal erase_splash_screen3
+
 # Gerador de estrelas
 g_stars:
     
@@ -188,7 +203,8 @@ update_enemy_position:
     beq $15, $0, update_enemy_invert_right   # Se X >= 49, inverter para esquerda
     
     # Verificar se chegou ao limite esquerdo (X <= 0)
-    slt $15, $0, $17                 # $15 = 1 se 0 < X, 0 se X <= 0
+    addi $14, $0, 1                 # $14 = limite esquerdo (0)
+    slt $15, $14, $17                 # $15 = 1 se 0 < X, 0 se X <= 0
     beq $15, $0, update_enemy_invert_left     # Se X <= 0, inverter para direita
     
     # Se não chegou aos limites, continuar movimento normal
@@ -750,6 +766,128 @@ erase_player:
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
+
+# Funções para apagar splash screens (apagar retângulos nas posições dos sprites)
+# Usar as mesmas posições que draw_entity usa internamente
+erase_splash_screen:
+    # Salvar $ra na pilha
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    # Posição e dimensões do primeiro splash screen (mesmas usadas em draw_entity_splash_screen)
+    addi $20, $0, 44             # X inicial
+    addi $21, $0, 64             # Y inicial
+    addi $23, $0, 44             # Largura (44 pixels)
+    addi $24, $0, 8              # Altura (8 pixels)
+    
+    # Usar a mesma lógica de erase_entity para apagar o retângulo
+    jal erase_rectangle
+    
+    # Recuperar $ra
+    lw $31, 0($29)
+    addi $29, $29, 4
+    jr $31
+
+erase_splash_screen2:
+    # Salvar $ra na pilha
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    # Posição e dimensões do segundo splash screen (mesmas usadas em draw_entity_splash_screen2)
+    addi $20, $0, 44             # X inicial
+    addi $21, $0, 74             # Y inicial
+    addi $23, $0, 44             # Largura (44 pixels)
+    addi $24, $0, 8              # Altura (8 pixels)
+    
+    # Usar a mesma lógica de erase_entity para apagar o retângulo
+    jal erase_rectangle
+    
+    # Recuperar $ra
+    lw $31, 0($29)
+    addi $29, $29, 4
+    jr $31
+
+erase_splash_screen3:
+    # Salvar $ra na pilha
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    # Posição e dimensões do terceiro splash screen (mesmas usadas em draw_entity_splash_screen3)
+    addi $20, $0, 44             # X inicial
+    addi $21, $0, 104             # Y inicial
+    addi $23, $0, 44             # Largura (44 pixels)
+    addi $24, $0, 15             # Altura (15 pixels)
+    
+    # Usar a mesma lógica de erase_entity para apagar o retângulo
+    jal erase_rectangle
+    
+    # Recuperar $ra
+    lw $31, 0($29)
+    addi $29, $29, 4
+    jr $31
+
+# Função auxiliar para apagar um retângulo (similar a erase_entity mas mais simples)
+# Parâmetros: $20 = X inicial, $21 = Y inicial, $23 = largura, $24 = altura
+erase_rectangle:
+    # Salvar $ra na pilha
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    # Salvar X e Y iniciais em registradores temporários
+    add $16, $0, $20                 # $16 = X inicial (preservar)
+    add $17, $0, $21                 # $17 = Y inicial (preservar)
+    
+    # Variáveis para loops
+    addi $11, $0, 0                  # $11 = linha atual
+    addi $13, $0, 0                  # $13 = coluna atual
+    addi $12, $0, 0                  # $12 = cor preta (0x00000000)
+    
+    # Loop externo: percorre linhas
+    erase_rectangle_loop_y:
+        beq $11, $24, erase_rectangle_end    # Se linha >= altura, termina
+        
+        # Resetar coluna para cada nova linha
+        addi $13, $0, 0
+        
+        # Loop interno: percorre colunas
+        erase_rectangle_loop_x:
+            beq $13, $23, erase_rectangle_next_y   # Se coluna >= largura, próxima linha
+            
+            # Salvar valores temporários na pilha antes de chamar drawpx
+            addi $29, $29, -8
+            sw $11, 0($29)                   # Salvar linha atual
+            sw $13, 4($29)                   # Salvar coluna atual
+            
+            # Calcular posição X e Y na tela usando valores preservados
+            add $20, $16, $13               # $20 = X inicial + coluna
+            add $21, $17, $11                # $21 = Y inicial + linha
+            
+            # Desenhar pixel preto (apagar)
+            jal drawpx
+            
+            # Recuperar valores da pilha
+            lw $11, 0($29)                   # Restaurar linha atual
+            lw $13, 4($29)                   # Restaurar coluna atual
+            addi $29, $29, 8
+            
+            # Próxima coluna
+            addi $13, $13, 1
+            j erase_rectangle_loop_x
+        
+        erase_rectangle_next_y:
+            # Próxima linha
+            addi $11, $11, 1
+            j erase_rectangle_loop_y
+    
+    erase_rectangle_end:
+        # Restaurar X e Y originais
+        add $20, $0, $16                 # Restaurar X inicial
+        add $21, $0, $17                 # Restaurar Y inicial
+        
+        # Recuperar $ra
+        lw $31, 0($29)
+        addi $29, $29, 4
+        jr $31
 
 # Função para apagar uma entidade (desenhar com cor preta)
 # Parâmetros:
