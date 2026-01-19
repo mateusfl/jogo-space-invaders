@@ -3,6 +3,7 @@
     COR_ESTRELA: .word 0x00FFFFFF
     COR_PLAYER: .word 0x0000FF00
     COR_ENEMY: .word 0x00FF0000
+    COR_PROJ: .word 0x00FFFF00      # Cor do tiro (Amarelo)
     POSX_INIT: .word 55
     POSY_INIT: .word 184
     POSX_PREV: .word 55          # Posição X anterior do player (para apagar)
@@ -13,6 +14,32 @@
     ENEMY_X_PREV: .word 15          # Posição X anterior dos inimigos (para apagar)
     ENEMY_DIRECTION: .word 1        # Direção do movimento: 1 = direita, -1 = esquerda
     SCREEN_WIDTH: .word 128         # Largura da tela em pixels
+    
+    # Notas de uma melodia simples (ex: tema de suspense)
+    musica_notas: .word 38, 36  # Tons MIDI
+    musica_tam:   .word 2                               # Total de notas
+    
+    # Estado do Sequenciador
+    musica_idx:   .word 0    # Qual nota está tocando agora
+    musica_timer: .word 0    # Quanto tempo falta para a próxima nota
+    
+    # Timer e Controle de Fim de Jogo
+    GAME_TIMER: .word 0              # Contador do timer do jogo (decrementa)
+    GAME_TIMER_INITIAL: .word 1000  # Valor inicial do timer (ajustável)
+    GAME_OVER: .word 0                # Flag: 0 = jogo ativo, 1 = jogo terminado
+    GAME_WIN: .word 0                 # Flag: 0 = não ganhou, 1 = vitória
+    TIMER_PRINT_COUNTER: .word 0     # Contador para controlar frequência de impressão
+
+    # Variáveis do Projétil
+    PROJ_X: .word 0
+    PROJ_Y: .word 0
+    PROJ_ACTIVE: .word 0            # 0 = inativo, 1 = ativo
+    
+    # Status dos Inimigos (1 = vivo, 0 = morto) - 15 posições
+    ENEMIES_STATUS:
+        .word 1, 1, 1, 1, 1    # Fileira 0 (Superior)
+        .word 1, 1, 1, 1, 1    # Fileira 1 (Meio)
+        .word 1, 1, 1, 1, 1    # Fileira 2 (Inferior)
     
     SPLASH_SCREEN:
         .word	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000
@@ -52,15 +79,15 @@
 
     # Alien sprite: 11x8 pixels (armazenado linha por linha)
     ALIEN_SPRITE:
-        .word	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00FFFFFF
-        .word	0x00000000	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00000000
-        .word	0x00000000	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00000000
-        .word	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00000000
-        .word	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF
-        .word	0x00FFFFFF	0x00000000	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00FFFFFF	0x00000000	0x00FFFFFF
-        .word	0x00FFFFFF	0x00000000	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00000000	0x00FFFFFF
-        .word	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00000000	0x00000000	0x00000000
-											
+        .word	0x00FF0000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00FF0000
+        .word	0x00000000	0x00FF0000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00FF0000	0x00000000
+        .word	0x00000000	0x00000000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00000000	0x00000000
+        .word	0x00000000	0x00FF0000	0x00FF0000	0x00000000	0x00FF0000	0x00FF0000	0x00FF0000	0x00000000	0x00FF0000	0x00FF0000	0x00000000
+        .word	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000
+        .word	0x00FF0000	0x00000000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00FF0000	0x00000000	0x00FF0000
+        .word	0x00FF0000	0x00000000	0x00FF0000	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00FF0000	0x00000000	0x00FF0000
+        .word	0x00000000	0x00000000	0x00000000	0x00FF0000	0x00000000	0x00000000	0x00000000	0x00FF0000	0x00000000	0x00000000	0x00000000
+                                            
     # Player sprite: 11x8 pixels (armazenado linha por linha)
     PLAYER_SPRITE:
         .word	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000	0x00FFFFFF	0x00000000	0x00000000	0x00000000	0x00000000	0x00000000
@@ -83,13 +110,12 @@ main:
 # Configs iniciais
     addi $23, $0, 50      # Quantidade de estrelas 
 
-
 jal draw_splash_screen
 jal draw_splash_screen2
 jal draw_splash_screen3
 
 # timer maior para o splash screen (não precisa ser função)
-addi $25, $0, 2000000          # Timer maior para splash screen
+addi $25, $0, 20000          # Timer maior para splash screen
 splash_timer_loop:
     beq $25, $0, splash_timer_end
     nop
@@ -97,6 +123,62 @@ splash_timer_loop:
     addi $25, $25, -1
     j splash_timer_loop
 splash_timer_end:
+
+    addi $4, $0, 60                  # Nota baixa
+    addi $5, $0, 300                 # Duração
+    addi $6, $0, 0                   # Instrumento
+    addi $7, $0, 100                 # Volume
+    addi $2, $0, 31
+    syscall
+
+    addi $4, $0, 300
+    addi $2, $0, 32
+    syscall
+
+    addi $4, $0, 62                  # Nota baixa
+    addi $5, $0, 300                 # Duração
+    addi $6, $0, 0                   # Instrumento
+    addi $7, $0, 100                 # Volume
+    addi $2, $0, 31
+    syscall
+
+    addi $4, $0, 300
+    addi $2, $0, 32
+    syscall
+
+    addi $4, $0, 65                  # Nota baixa
+    addi $5, $0, 300                 # Duração
+    addi $6, $0, 0                   # Instrumento
+    addi $7, $0, 100                 # Volume
+    addi $2, $0, 31
+    syscall
+
+    addi $4, $0, 300
+    addi $2, $0, 32
+    syscall
+
+    addi $4, $0, 64                  # Nota baixa
+    addi $5, $0, 300               # Duração
+    addi $6, $0, 0                   # Instrumento
+    addi $7, $0, 100                 # Volume
+    addi $2, $0, 31
+    syscall
+
+    addi $4, $0, 500
+    addi $2, $0, 32
+    syscall
+
+    addi $4, $0, 60                 # Nota baixa
+    addi $5, $0, 500               # Duração
+    addi $6, $0, 0                   # Instrumento
+    addi $7, $0, 100                 # Volume
+    addi $2, $0, 31
+    syscall
+
+    addi $4, $0, 1300
+    addi $2, $0, 32
+    syscall
+
 
 # Apagar splash screens usando erase_rectangle
 jal erase_splash_screen
@@ -131,9 +213,24 @@ g_stars:
 init_game_loop:
     lw $18, ENEMY_X            # $18 = controle do loop (posição X do enemy)
     addi $8, $0, 0
+    
+    # Inicializar timer do jogo
+    lw $10, GAME_TIMER_INITIAL
+    sw $10, GAME_TIMER
+    
+    # Garantir que flags estão zeradas
+    sw $0, GAME_OVER
+    sw $0, GAME_WIN
+    
+    # Imprimir timer inicial
+    jal print_timer
+
+    # Desenho inicial dos inimigos (uma vez antes do loop para eles aparecerem)
+    jal draw_enemies
 
 # game loop
 game_loop:
+
     # Salvar posição anterior do player antes de atualizar
     lw $14, POSX_INIT
     sw $14, POSX_PREV
@@ -146,19 +243,38 @@ game_loop:
     jal timer
 
     beq $8, 128, endgame
-
-    jal erase_enemies
     
+    # --- NOVO: Atualizar Projétil ---
+    jal update_projectile
+    
+    # Verificar vitória (se todos os inimigos foram eliminados)
+    jal check_victory
+    
+    # Verificar timer de derrota
+    jal check_game_timer
+    
+    # Verificar se o jogo terminou
+    lw $10, GAME_OVER
+    bne $10, $0, handle_game_end
+    
+    # 1. Salva a posição atual como "anterior" antes de calcular a nova
     lw $18, ENEMY_X
+    sw $18, ENEMY_X_PREV 
     
-    jal draw_enemies
-    jal timer
-
-    sw $18, ENEMY_X_PREV
-    
-    # Atualizar posição dos inimigos (verificar limites e inverter direção se necessário)
+    # 2. Calcula a nova posição (atualiza ENEMY_X na memória)
     jal update_enemy_position
     
+    # 3. Chama a função otimizada BLINDADA que apaga e desenha um por um
+    jal refresh_enemies
+    
+    jal atualizar_musica
+
+    # 4. Timer para controlar a velocidade
+    jal timer
+
+
+
+
     addi $8, $8, 1
     j game_loop
 
@@ -170,8 +286,54 @@ endgame:
 
 # FUNÇÕES ===========================================================================================
 
+atualizar_musica:
+    la   $8, musica_timer
+    lw   $9, 0($8)
+    bgtz $9, conta_frame_musica    # Se timer > 0, apenas diminui
+
+    # --- HORA DE TOCAR A PRÓXIMA NOTA ---
+    la   $8, musica_idx
+    lw   $10, 0($8)                # $10 = índice atual
+
+    # Pegar a nota da "partitura"
+    la   $11, musica_notas
+    sll  $12, $10, 2               # Multiplica índice por 4 (offset word)
+    add  $11, $11, $12
+    lw   $4, 0($11)                # $a0 = Tom da nota
+
+    # Tocar nota assíncrona (Syscall 31)
+    addi $2, $0, 31
+    addi $5, $0, 400               # $a1 = Duração da nota (400ms)
+    addi $6, $0, 40                 # $a2 = Instrumento (0 = Piano)
+    addi $7, $0, 100                # $a3 = Volume (mais baixo para não atrapalhar o tiro)
+    syscall
+
+    # --- PREPARAR PRÓXIMA NOTA ---
+    addi $10, $10, 1               # musica_idx++
+    la   $13, musica_tam
+    lw   $13, 0($13)
+    blt  $10, $13, salvar_idx      # Se idx < tamanho, salva
+    addi $10, $0, 0                # Senão, reseta para 0 (Loop da música)
+
+salvar_idx:
+    la   $8, musica_idx
+    sw   $10, 0($8)
+    
+    addi $9, $0, 10               # Próxima nota em 20 frames (~300ms se o jogo for rápido)
+    la   $8, musica_timer
+    sw   $9, 0($8)
+    jr   $ra
+
+conta_frame_musica:
+    addi $9, $9, -1
+    la   $8, musica_timer
+    sw   $9, 0($8)
+    jr   $ra
+
+
+
 timer:
-    addi $25, $0, 90000
+    addi $25, $0, 10000
     fortimer: beq $25, $0, fimtimer
         nop
         nop
@@ -179,62 +341,235 @@ timer:
         j fortimer
     fimtimer: jr $31
 
-# Função para atualizar posição dos inimigos com verificação de limites
-# Verifica se chegou ao fim da tela e inverte direção se necessário
-# Atualiza $18 (usado no loop principal) e ENEMY_X
-update_enemy_position:
-    # Salvar $ra na pilha
+# ==========================================================
+# FUNÇÕES DE CONTROLE DE FIM DE JOGO
+# ==========================================================
+
+# Conta quantos inimigos ainda estão vivos
+count_alive_enemies:
     addi $29, $29, -4
     sw $31, 0($29)
     
-    # Salvar registradores que serão usados
-    addi $29, $29, -8
-    sw $16, 0($29)                   # Salvar $16 (direção)
-    sw $17, 4($29)                   # Salvar $17 (X atual)
+    addi $29, $29, -12
+    sw $8, 0($29)                    # Salvar $8
+    sw $9, 4($29)                    # Salvar $9
+    sw $10, 8($29)                   # Salvar $10
     
-    # Carregar valores atuais
+    addi $2, $0, 0                   # $v0 = Contador = 0
+    la $8, ENEMIES_STATUS
+    addi $9, $0, 0                   # Índice = 0
+    addi $10, $0, 15                 # Total de inimigos
+    
+count_loop:
+    beq $9, $10, count_end
+    lw $11, 0($8)                    # Carregar status
+    beq $11, $0, count_next          # Se morto (0), pular
+    addi $2, $2, 1                   # Incrementar contador
+    
+count_next:
+    addi $8, $8, 4                   # Próxima posição
+    addi $9, $9, 1                   # Incrementar índice
+    j count_loop
+    
+count_end:
+    lw $8, 0($29)
+    lw $9, 4($29)
+    lw $10, 8($29)
+    addi $29, $29, 12
+    
+    lw $31, 0($29)
+    addi $29, $29, 4
+    jr $31
+
+# Verifica se todos os inimigos foram eliminados (vitória)
+check_victory:
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    jal count_alive_enemies
+    
+    bne $2, $0, victory_check_end    # Se ainda há inimigos, continuar
+    
+    # Todos os inimigos mortos - VITÓRIA!
+    addi $8, $0, 1
+    sw $8, GAME_WIN
+    sw $8, GAME_OVER
+    
+    # Tocar som de vitória
+    addi $4, $0, 60                  # Nota
+    addi $5, $0, 500                 # Duração
+    addi $6, $0, 0                   # Instrumento
+    addi $7, $0, 100                 # Volume
+    addi $2, $0, 31
+    syscall
+    
+    addi $4, $0, 100                  # Timer para próxima nota
+    addi $2, $0, 32
+    syscall
+    
+    addi $4, $0, 64                   # Nota
+    addi $5, $0, 500                  # Duração
+    addi $6, $0, 0                    # Instrumento
+    addi $7, $0, 100                  # Volume
+    addi $2, $0, 31
+    syscall
+    
+victory_check_end:
+    lw $31, 0($29)
+    addi $29, $29, 4
+    jr $31
+
+# Imprime o valor do timer na saída do MARS
+print_timer:
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    addi $29, $29, -8
+    sw $4, 0($29)
+    sw $5, 4($29)
+    
+    # Imprimir string "tempo: "
+    addi $4, $0, 116                 # 't'
+    addi $2, $0, 11                  # syscall print char
+    syscall
+    addi $4, $0, 101                 # 'e'
+    syscall
+    addi $4, $0, 109                 # 'm'
+    syscall
+    addi $4, $0, 112                 # 'p'
+    syscall
+    addi $4, $0, 111                 # 'o'
+    syscall
+    addi $4, $0, 58                  # ':'
+    syscall
+    addi $4, $0, 32                  # ' ' (espaço)
+    syscall
+    
+    # Imprimir valor do timer
+    lw $4, GAME_TIMER
+    addi $2, $0, 1                    # syscall print integer
+    syscall
+    
+    # Imprimir nova linha
+    addi $4, $0, 10                  # '\n'
+    addi $2, $0, 11                  # syscall print char
+    syscall
+    
+    lw $4, 0($29)
+    lw $5, 4($29)
+    addi $29, $29, 8
+    
+    lw $31, 0($29)
+    addi $29, $29, 4
+    jr $31
+
+# Verifica o timer e decrementa. Se zerar com inimigos vivos, derrota
+check_game_timer:
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    addi $29, $29, -12
+    sw $8, 0($29)
+    sw $9, 4($29)
+    sw $10, 8($29)
+    
+    lw $8, GAME_TIMER
+    beq $8, $0, timer_check_end      # Se já zerou, não fazer nada
+    
+    addi $8, $8, -1                  # Decrementar
+    sw $8, GAME_TIMER
+    
+    # Imprimir timer a cada 100 unidades ou quando for múltiplo de 1000
+    addi $10, $0, 100
+    div $8, $10
+    mfhi $10                         # Resto da divisão por 100
+    bne $10, $0, skip_print_timer    # Se não é múltiplo de 100, pular
+    
+    jal print_timer
+    
+skip_print_timer:
+    bne $8, $0, timer_check_end      # Se ainda não zerou, continuar
+    
+    # Timer zerou - verificar se há inimigos vivos
+    jal count_alive_enemies
+    beq $2, $0, timer_check_end      # Se não há inimigos, vitória já foi detectada
+    
+    # Ainda há inimigos - derrota por tempo
+    addi $9, $0, 1
+    sw $9, GAME_OVER
+    # GAME_WIN permanece 0 (derrota)
+    
+    # Tocar som de derrota
+    addi $4, $0, 30                  # Nota baixa
+    addi $5, $0, 800                 # Duração
+    addi $6, $0, 0                   # Instrumento
+    addi $7, $0, 100                 # Volume
+    addi $2, $0, 31
+    syscall
+    
+timer_check_end:
+    lw $8, 0($29)
+    lw $9, 4($29)
+    lw $10, 8($29)
+    addi $29, $29, 12
+    
+    lw $31, 0($29)
+    addi $29, $29, 4
+    jr $31
+
+# Gerencia o fim do jogo (vitória ou derrota)
+handle_game_end:
+    # Aguardar um tempo antes de terminar (para efeitos sonoros tocarem)
+    addi $25, $0, 2000000
+wait_loop:
+    beq $25, $0, wait_end
+    addi $25, $25, -1
+    j wait_loop
+wait_end:
+    j endgame                       # Terminar o jogo
+
+# Função para atualizar posição dos inimigos com verificação de limites
+update_enemy_position:
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    addi $29, $29, -8
+    sw $16, 0($29)                   # Salvar $16
+    sw $17, 4($29)                   # Salvar $17
+    
     lw $17, ENEMY_X                  # $17 = posição X atual
     lw $16, ENEMY_DIRECTION          # $16 = direção atual (1 ou -1)
     
-    # Calcular limite direito: última coluna (X + 4*17 + 11) não pode ultrapassar 128
-    # X + 68 + 11 >= 128, então X >= 49
     addi $14, $0, 49                 # $14 = limite direito (49)
     
-    # Verificar se chegou ao limite direito (X >= 49)
     slt $15, $17, $14                # $15 = 1 se X < 49, 0 se X >= 49
-    beq $15, $0, update_enemy_invert_right   # Se X >= 49, inverter para esquerda
+    beq $15, $0, update_enemy_invert_right
     
-    # Verificar se chegou ao limite esquerdo (X <= 0)
     addi $14, $0, 1                 # $14 = limite esquerdo (0)
     slt $15, $14, $17                 # $15 = 1 se 0 < X, 0 se X <= 0
-    beq $15, $0, update_enemy_invert_left     # Se X <= 0, inverter para direita
+    beq $15, $0, update_enemy_invert_left
     
-    # Se não chegou aos limites, continuar movimento normal
     j update_enemy_move
     
     update_enemy_invert_right:
-        # Inverter direção para esquerda
         addi $16, $0, -1
         sw $16, ENEMY_DIRECTION
         j update_enemy_move
     
     update_enemy_invert_left:
-        # Inverter direção para direita
         addi $16, $0, 1
         sw $16, ENEMY_DIRECTION
         j update_enemy_move
     
     update_enemy_move:
-        # Mover inimigos: offset menor (2 pixels) multiplicado pela direção
-        addi $14, $0, 2               # $14 = offset de movimento (2 pixels)
-        mul $15, $16, $14             # $15 = direção * offset (2 ou -2)
+        addi $14, $0, 2               # $14 = offset de movimento
+        mul $15, $16, $14             # $15 = direção * offset
         add $17, $17, $15              # $17 = nova posição X
         sw $17, ENEMY_X                # Atualizar ENEMY_X
         
-        # Atualizar $18 no loop principal também (não restaurar o valor antigo)
+        # IMPORTANTE: Atualizar $18 para o chamador, se necessário
         add $18, $0, $17
     
-    # Recuperar registradores (exceto $18 que foi atualizado)
     lw $16, 0($29)                   # Restaurar $16
     lw $17, 4($29)                   # Restaurar $17
     addi $29, $29, 8
@@ -245,13 +580,9 @@ update_enemy_position:
 
 drawpx: 
     # Função para desenhar pixel na tela
-    # Registrador $20 = EIXO X
-    # Registrador $21 = EIXO Y
-
     lui $9, 0x1001          # Espaço de memoria para tela
     addi $10, $0, 128       # Largura lógica
 
-    # Calculo = (Y * largura) + X
     mul $11, $21, $10
     add $11, $11, $20
     sll $11, $11, 2
@@ -260,51 +591,14 @@ drawpx:
     sw $12, 0($11)
     jr $31
 
-# Função para desenhar uma linha horizontal
-# $20 = X inicial, $21 = Y, $23 = largura, $12 = cor
-draw_line:
-    addi $29, $29, -4
-    sw $31, 0($29)
-    
-    draw_line_loop:
-        beq $23, $0, draw_line_end
-        jal drawpx
-        addi $20, $20, 1
-        addi $23, $23, -1
-        j draw_line_loop
-    
-    draw_line_end:
-        lw $31, 0($29)
-        addi $29, $29, 4
-        jr $31
-
-# Função genérica para desenhar entidade usando sprite armazenado em memória
-# Parâmetros:
-#   $19 = X inicial na tela (player) ou $20 = X inicial (enemy)
-#   $21 = Y inicial na tela
-#   $25 = tipo de entidade (0=player, 1=enemy)
 draw_entity:
     # Salvar $ra e parâmetros originais na pilha
-    # Estrutura da pilha (de cima para baixo):
-    # 0($29): $ra (endereço de retorno)
-    # 4($29): $19 (X player)
-    # 8($29): $20 (X enemy)
-    # 12($29): $21 (Y)
-    # 16($29): $25 (tipo)
-    # 20($29): $22 (sprite) - será salvo depois
-    # 24($29): $23 (largura) - será salvo depois
-    # 28($29): $24 (altura) - será salvo depois
-    
-    addi $29, $29, -32               # Reservar espaço para tudo de uma vez
-    sw $31, 0($29)                   # Salvar $ra primeiro (no topo)
-    sw $19, 4($29)                   # Salvar X inicial (player)
-    sw $20, 8($29)                   # Salvar X inicial (enemy)
-    sw $21, 12($29)                  # Salvar Y inicial
-    sw $25, 16($29)                  # Salvar tipo de entidade
-    
-    # Selecionar sprite e dimensões baseado no tipo
-    # $25 = 0: player
-    # $25 = 1: enemy
+    addi $29, $29, -32               
+    sw $31, 0($29)                   
+    sw $19, 4($29)                   
+    sw $20, 8($29)                   
+    sw $21, 12($29)                  
+    sw $25, 16($29)                  
     
     addi $14, $0, 0                  # $14 = 0 (player)
     beq $25, $14, draw_entity_player
@@ -312,9 +606,6 @@ draw_entity:
     addi $14, $0, 1                  # $14 = 1 (enemy)
     beq $25, $14, draw_entity_enemy
     
-    addi $14, $0, 2                  # $14 = 2 (projectile)
-    beq $25, $14, draw_entity_projectile
-
     addi $14, $0, 3                  # $14 = 3 (splash screen 1)
     beq $25, $14, draw_entity_splash_screen
 
@@ -324,113 +615,95 @@ draw_entity:
     addi $14, $0, 5                  # $14 = 5 (splash screen 3)
     beq $25, $14, draw_entity_splash_screen3
 
-    # Se chegou aqui, tipo inválido - usar enemy como padrão
     j draw_entity_enemy
     
     draw_entity_player:
-        la $22, PLAYER_SPRITE        # $22 = endereço base do sprite
-        lw $23, SPRITE_WIDTH         # $23 = largura (compartilhada)
-        lw $24, SPRITE_HEIGHT        # $24 = altura (compartilhada)
-        add $20, $0, $19             # Usar $19 (X do player) em $20 para compatibilidade
+        la $22, PLAYER_SPRITE        
+        lw $23, SPRITE_WIDTH         
+        lw $24, SPRITE_HEIGHT        
+        add $20, $0, $19             
         j draw_entity_start
     
     draw_entity_enemy:
-        la $22, ALIEN_SPRITE         # $22 = endereço base do sprite
-        lw $23, SPRITE_WIDTH         # $23 = largura (compartilhada)
-        lw $24, SPRITE_HEIGHT        # $24 = altura (compartilhada)
-        j draw_entity_start
-    
-    draw_entity_projectile:
-        # TODO: Implementar quando projectile sprite estiver pronto
-        # la $22, PROJECTILE_SPRITE
-        # Por enquanto, usar enemy como placeholder
-        la $22, ALIEN_SPRITE
-        lw $23, SPRITE_WIDTH         # $23 = largura (compartilhada)
-        lw $24, SPRITE_HEIGHT        # $24 = altura (compartilhada)
+        la $22, ALIEN_SPRITE         
+        lw $23, SPRITE_WIDTH         
+        lw $24, SPRITE_HEIGHT        
         j draw_entity_start
     
     draw_entity_splash_screen:
-        addi $20, $0, 44                  # X inicial
-        addi $21, $0, 64                  # Y inicial
-        la $22, SPLASH_SCREEN      # Endereço base do sprite
-        addi $23, $0, 44                 # Largura do sprite (128 pixels) 
-        addi $24, $0, 8                  # Altura do sprite (6 pixels)
+        addi $20, $0, 44                  
+        addi $21, $0, 64                  
+        la $22, SPLASH_SCREEN      
+        addi $23, $0, 44                 
+        addi $24, $0, 8                  
         j draw_entity_start    
 
     draw_entity_splash_screen2:
-        addi $20, $0, 44                  # X inicial
-        addi $21, $0, 74                  # Y inicial
-        la $22, SPLASH_SCREEN2      # Endereço base do sprite
-        addi $23, $0, 44                 # Largura do sprite (128 pixels) 
-        addi $24, $0, 8                  # Altura do sprite (6 pixels)
+        addi $20, $0, 44                  
+        addi $21, $0, 74                  
+        la $22, SPLASH_SCREEN2      
+        addi $23, $0, 44                 
+        addi $24, $0, 8                  
         j draw_entity_start    
 
     draw_entity_splash_screen3:
-        addi $20, $0, 44                  # X inicial
-        addi $21, $0, 104                  # Y inicial
-        la $22, SPLASH_SCREEN3      # Endereço base do sprite
-        addi $23, $0, 44                 # Largura do sprite (128 pixels) 
-        addi $24, $0, 15                  # Altura do sprite (6 pixels)
+        addi $20, $0, 44                  
+        addi $21, $0, 104                  
+        la $22, SPLASH_SCREEN3      
+        addi $23, $0, 44                 
+        addi $24, $0, 15                  
         j draw_entity_start    
 
     draw_entity_start:
-        # Salvar sprite e dimensões na pilha (já reservado espaço acima)
-        sw $22, 20($29)              # Salvar endereço base do sprite
-        sw $23, 24($29)              # Salvar largura
-        sw $24, 28($29)              # Salvar altura
+        sw $22, 20($29)              
+        sw $23, 24($29)              
+        sw $24, 28($29)              
     
-    # Variáveis para loops
     addi $11, $0, 0                  # $11 = linha atual
     addi $13, $0, 0                  # $13 = coluna atual
     
-    # Loop externo: percorre linhas
     draw_entity_loop_y:
-        beq $11, $24, draw_entity_end    # Se linha >= altura, termina
+        beq $11, $24, draw_entity_end    
         
         addi $13, $0, 0
         
         draw_entity_loop_x:
-            beq $13, $23, draw_entity_next_y   # Se coluna >= largura, próxima linha
+            beq $13, $23, draw_entity_next_y   
             
-            # Calcular índice: linha * largura + coluna
-            mul $14, $11, $23                 # $14 = linha * largura
-            add $14, $14, $13                 # $14 = índice
+            mul $14, $11, $23                 
+            add $14, $14, $13                 
+            sll $14, $14, 2                   
+            add $14, $14, $22                 
             
-            # Calcular endereço do pixel: base + índice * 4
-            sll $14, $14, 2                   # $14 = índice * 4 (bytes)
-            add $14, $14, $22                 # $14 = endereço do pixel
+            lw $12, 0($14)                   
             
-            lw $12, 0($14)                   # $12 = cor do pixel
-            
-            # Se a cor não for preta (0x00000000), desenhar o pixel
             beq $12, $0, draw_entity_skip_pixel
             
             addi $29, $29, -28
-            sw $11, 0($29)        # Salvar linha atual
-            sw $13, 4($29)        # Salvar coluna atual
-            sw $22, 8($29)        # Salvar endereço base do sprite
-            sw $23, 12($29)       # Salvar largura
-            sw $24, 16($29)       # Salvar altura
-            sw $20, 20($29)       # Salvar X inicial
-            sw $21, 24($29)       # Salvar Y inicial
+            sw $11, 0($29)        
+            sw $13, 4($29)        
+            sw $22, 8($29)        
+            sw $23, 12($29)       
+            sw $24, 16($29)       
+            sw $20, 20($29)       
+            sw $21, 24($29)       
             
-            # Calcular posição X e Y na tela usando valores salvos
-            lw $15, 20($29)                  # Carregar X inicial
-            lw $13, 4($29)                   # Carregar coluna atual
-            add $20, $15, $13                # $20 = X inicial + coluna
-            lw $16, 24($29)                  # Carregar Y inicial
-            lw $11, 0($29)                   # Carregar linha atual
-            add $21, $16, $11                # $21 = Y inicial + linha
+            lw $15, 20($29)                  
+            lw $13, 4($29)                   
+            add $20, $15, $13                
+            lw $16, 24($29)                  
+            lw $11, 0($29)                   
+            add $21, $16, $11                
             
             jal drawpx
             
-            lw $11, 0($29)          # Restaurar linha atual
-            lw $13, 4($29)          # Restaurar coluna atual
-            lw $22, 8($29)          # Restaurar endereço base do sprite
-            lw $23, 12($29)         # Restaurar largura
-            lw $24, 16($29)         # Restaurar altura
-            lw $20, 20($29)         # Restaurar X inicial
-            lw $21, 24($29)         # Restaurar Y inicial
+            lw $11, 0($29)          
+            lw $13, 4($29)          
+            lw $22, 8($29)          
+            lw $23, 12($29)         
+            lw $24, 16($29)         
+            lw $20, 20($29)         
+            lw $21, 24($29)         
             addi $29, $29, 28
             
             draw_entity_skip_pixel:
@@ -442,20 +715,18 @@ draw_entity:
             j draw_entity_loop_y
     
     draw_entity_end:
-        # Recuperar parâmetros (ordem inversa do salvamento)
-        lw $31, 0($29)       # Restaurar $ra PRIMEIRO (do topo)
-        lw $19, 4($29)       # Restaurar X inicial (player)
-        lw $20, 8($29)       # Restaurar X inicial (enemy/projectile)
-        lw $21, 12($29)      # Restaurar Y inicial
-        lw $25, 16($29)      # Restaurar tipo de entidade
-        lw $22, 20($29)      # Restaurar endereço base do sprite
-        lw $23, 24($29)      # Restaurar largura
-        lw $24, 28($29)      # Restaurar altura
-        addi $29, $29, 32    # Restaurar pilha completamente
+        lw $31, 0($29)       
+        lw $19, 4($29)       
+        lw $20, 8($29)       
+        lw $21, 12($29)      
+        lw $25, 16($29)      
+        lw $22, 20($29)      
+        lw $23, 24($29)      
+        lw $24, 28($29)      
+        addi $29, $29, 32    
         
-        jr $31                            # Retornar usando $ra restaurado
+        jr $31                            
 
-# Funções wrapper para desenhar splash screens (chamadas de main)
 draw_splash_screen:
     addi $29, $29, -4
     sw $31, 0($29)
@@ -498,301 +769,179 @@ draw_splash_screen3:
     addi $29, $29, 4
     jr $31
 
-# Função para desenhar um inimigo em posição específica
-# Parâmetros: $20 = X, $21 = Y
 draw_enemy_at:
     addi $29, $29, -4
     sw $31, 0($29)
-    
-    # Preparar parâmetros para draw_entity
-    # $20 e $21 já estão configurados pelo chamador
-    addi $25, $0, 1            # $25 = 1 (tipo: enemy)
-    
+    addi $25, $0, 1            
     jal draw_entity
-    
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
 
-# Função para apagar um inimigo em posição específica
-# Parâmetros: $20 = X, $21 = Y
 erase_enemy_at:
     addi $29, $29, -4
     sw $31, 0($29)
-    
-    # Preparar parâmetros para erase_rectangle
-    # $20 e $21 já estão configurados pelo chamador
-    lw $23, SPRITE_WIDTH         # $23 = largura
-    lw $24, SPRITE_HEIGHT        # $24 = altura
-    
-    # Chamar função de apagar retângulo
+    lw $23, SPRITE_WIDTH         
+    lw $24, SPRITE_HEIGHT        
     jal erase_rectangle
-
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
 
-# Função para desenhar 5 colunas × 3 fileiras de inimigos (15 inimigos total)
-# Gap de 12 pixels entre fileiras e 6 pixels entre colunas
 draw_enemies:
     addi $29, $29, -4
     sw $31, 0($29)
-    
-    # Salvar registradores que serão usados nos loops
     addi $29, $29, -16
-    sw $16, 0($29)                   # Salvar $16 (contador de colunas)
-    sw $17, 4($29)                   # Salvar $17 (contador de fileiras)
-    sw $18, 8($29)                   # Salvar $18 (X atual)
-    sw $19, 12($29)                  # Salvar $19 (Y atual)
+    sw $16, 0($29)                   
+    sw $17, 4($29)                   
+    sw $18, 8($29)                   
+    sw $19, 12($29)                  
     
-    # Carregar X base
-    lw $18, ENEMY_X                  # $18 = X base (primeira coluna)
-    
-    # Loop externo: percorre fileiras (3 fileiras)
-    addi $17, $0, 0                  # $17 = contador de fileiras (0, 1, 2)
+    lw $18, ENEMY_X                  
+    addi $17, $0, 0                  
     
     draw_enemies_loop_y:
-        beq $17, 3, draw_enemies_end_y   # Se fileira >= 3, termina
-        
-        # Determinar Y baseado na fileira
-        beq $17, $0, draw_enemies_y1      # Se fileira == 0, usar ENEMY_Y
+        beq $17, 3, draw_enemies_end_y   
+        beq $17, $0, draw_enemies_y1      
         addi $14, $0, 1
-        beq $17, $14, draw_enemies_y2    # Se fileira == 1, usar ENEMY_Y2
-        # Se fileira == 2, usar ENEMY_Y3
+        beq $17, $14, draw_enemies_y2    
         lw $19, ENEMY_Y3
         j draw_enemies_y_done
-        
-        draw_enemies_y1:
-            lw $19, ENEMY_Y
-            j draw_enemies_y_done
-        
-        draw_enemies_y2:
-            lw $19, ENEMY_Y2
-            j draw_enemies_y_done
+        draw_enemies_y1: lw $19, ENEMY_Y
+        j draw_enemies_y_done
+        draw_enemies_y2: lw $19, ENEMY_Y2
+        j draw_enemies_y_done
         
         draw_enemies_y_done:
-            # Loop interno: percorre colunas (5 colunas)
-            addi $16, $0, 0              # $16 = contador de colunas (0, 1, 2, 3, 4)
-            
+            addi $16, $0, 0              
             draw_enemies_loop_x:
-                beq $16, 5, draw_enemies_end_x   # Se coluna >= 5, próxima fileira
-                
-                # Calcular X atual: X_base + coluna * (largura + gap)
-                # largura = 11, gap = 6, então offset = coluna * 17
-                addi $14, $0, 17                 # $14 = 17 (11 + 6)
-                mul $15, $16, $14                # $15 = coluna * 17
-                add $20, $18, $15                # $20 = X_base + offset
-                add $21, $0, $19                  # $21 = Y da fileira atual
-                
+                beq $16, 5, draw_enemies_end_x   
+                addi $14, $0, 17                 
+                mul $15, $16, $14                
+                add $20, $18, $15                
+                add $21, $0, $19                  
                 addi $29, $29, -8
-                sw $16, 0($29)                   # Salvar contador de colunas
-                sw $17, 4($29)                   # Salvar contador de fileiras
-                
-                # Desenhar inimigo
+                sw $16, 0($29)                   
+                sw $17, 4($29)                   
                 jal draw_enemy_at
-                
-                lw $16, 0($29)                   # Restaurar contador de colunas
-                lw $17, 4($29)                   # Restaurar contador de fileiras
+                lw $16, 0($29)                   
+                lw $17, 4($29)                   
                 addi $29, $29, 8
-                
                 addi $16, $16, 1
                 j draw_enemies_loop_x
-            
             draw_enemies_end_x:
                 addi $17, $17, 1
                 j draw_enemies_loop_y
-    
     draw_enemies_end_y:
-        lw $16, 0($29)                   # Restaurar $16
-        lw $17, 4($29)                   # Restaurar $17
-        lw $18, 8($29)                   # Restaurar $18
-        lw $19, 12($29)                  # Restaurar $19
+        lw $16, 0($29)                   
+        lw $17, 4($29)                   
+        lw $18, 8($29)                   
+        lw $19, 12($29)                  
         addi $29, $29, 16
-        
         lw $31, 0($29)
         addi $29, $29, 4
         jr $31
 
-# Função para apagar 5 colunas × 3 fileiras de inimigos (15 inimigos total)
-# Usa posição anterior (ENEMY_X_PREV) para apagar antes de desenhar na nova posição
-erase_enemies:
-    addi $29, $29, -4
-    sw $31, 0($29)
-    
-    addi $29, $29, -16
-    sw $16, 0($29)                   # Salvar $16 (contador de colunas)
-    sw $17, 4($29)                   # Salvar $17 (contador de fileiras)
-    sw $18, 8($29)                   # Salvar $18 (X anterior)
-    sw $19, 12($29)                  # Salvar $19 (Y atual)
-    
-    lw $18, ENEMY_X_PREV             # $18 = X anterior (primeira coluna)
-    
-    # Loop externo: percorre fileiras (3 fileiras)
-    addi $17, $0, 0                  # $17 = contador de fileiras (0, 1, 2)
-    
-    erase_enemies_loop_y:
-        beq $17, 3, erase_enemies_end_y   # Se fileira >= 3, termina
-        
-        # Determinar Y baseado na fileira
-        beq $17, $0, erase_enemies_y1      # Se fileira == 0, usar ENEMY_Y
-        addi $14, $0, 1
-        beq $17, $14, erase_enemies_y2    # Se fileira == 1, usar ENEMY_Y2
-        # Se fileira == 2, usar ENEMY_Y3
-        lw $19, ENEMY_Y3
-        j erase_enemies_y_done
-        
-        erase_enemies_y1:
-            lw $19, ENEMY_Y
-            j erase_enemies_y_done
-        
-        erase_enemies_y2:
-            lw $19, ENEMY_Y2
-            j erase_enemies_y_done
-        
-        erase_enemies_y_done:
-            # Loop interno: percorre colunas (5 colunas)
-            addi $16, $0, 0              # $16 = contador de colunas (0, 1, 2, 3, 4)
-            
-            erase_enemies_loop_x:
-                beq $16, 5, erase_enemies_end_x   # Se coluna >= 5, próxima fileira
-                
-                # Calcular X atual: X_anterior + coluna * (largura + gap)
-                # largura = 11, gap = 6, então offset = coluna * 17
-                addi $14, $0, 17                 # $14 = 17 (11 + 6)
-                mul $15, $16, $14                # $15 = coluna * 17
-                add $20, $18, $15                # $20 = X_anterior + offset
-                add $21, $0, $19                  # $21 = Y da fileira atual
-                
-                # Salvar valores antes de chamar erase_enemy_at
-                addi $29, $29, -8
-                sw $16, 0($29)                   # Salvar contador de colunas
-                sw $17, 4($29)                   # Salvar contador de fileiras
-                
-                # Apagar inimigo
-                jal erase_enemy_at
-                
-                lw $16, 0($29)                   # Restaurar contador de colunas
-                lw $17, 4($29)                   # Restaurar contador de fileiras
-                addi $29, $29, 8
-                
-                addi $16, $16, 1
-                j erase_enemies_loop_x
-            
-            erase_enemies_end_x:
-                addi $17, $17, 1
-                j erase_enemies_loop_y
-    
-    erase_enemies_end_y:
-        lw $16, 0($29)                   # Restaurar $16
-        lw $17, 4($29)                   # Restaurar $17
-        lw $18, 8($29)                   # Restaurar $18
-        lw $19, 12($29)                  # Restaurar $19
-        addi $29, $29, 16
-        
-        lw $31, 0($29)
-        addi $29, $29, 4
-        jr $31
-
-# Função para desenhar player usando draw_entity
 draw_player:
     addi $29, $29, -4
     sw $31, 0($29)
-    
-    # Preparar parâmetros para draw_entity
-    lw $19, POSX_INIT          # $19 = X inicial (player usa $19)
-    lw $21, POSY_INIT          # $21 = Y inicial
-    addi $25, $0, 0            # $25 = 0 (tipo: player)
-    
-    # Chamar função genérica
+    lw $19, POSX_INIT          
+    lw $21, POSY_INIT          
+    addi $25, $0, 0            
     jal draw_entity
-    # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
 
-# Função para verificar entrada do teclado e atualizar posição do player
-# Move o player para esquerda ('a') ou direita ('d')
 check_keyboard_input:
     addi $29, $29, -4
     sw $31, 0($29)
-    
-    lui $8, 0xFFFF              # Carregar endereço base do MMIO (0xFFFF0000)
-    lw $9, 0($8)                 # Ler control register (bit 0 = ready)
-    andi $9, $9, 1               # Verificar bit 0 (ready bit)
-    beq $9, $0, check_keyboard_end   # Se não há entrada, sair
-    
-    lw $10, 4($8)                # $10 = caractere lido
-    
+    lui $8, 0xFFFF              
+    lw $9, 0($8)                 
+    andi $9, $9, 1               
+    beq $9, $0, check_keyboard_end   
+    lw $10, 4($8)                
     addi $11, $0, 'a'
     beq $10, $11, move_player_left
-
     addi $11, $0, 'd'
     beq $10, $11, move_player_right
+    
+    # --- NOVO: Tecla 'w' para atirar ---
+    addi $11, $0, 119       # ASCII 'w'
+    beq $10, $11, init_projectile
 
     j check_keyboard_end
     
     move_player_left:
-        lw $12, POSX_INIT        # Carregar posição X atual
-        addi $12, $12, -2        # Mover 2 pixels para esquerda
-        addi $13, $0, 0          # Limite esquerdo (0)
-        slt $14, $12, $13        # Verificar se X < 0
-        bne $14, $0, check_keyboard_end   # Se saiu dos limites, não atualizar
-        sw $12, POSX_INIT        # Atualizar posição X
+        lw $12, POSX_INIT        
+        addi $12, $12, -2        
+        addi $13, $0, 0          
+        slt $14, $12, $13        
+        bne $14, $0, check_keyboard_end   
+        sw $12, POSX_INIT        
         j check_keyboard_end
-    
     move_player_right:
         lw $12, POSX_INIT
         lw $13, SPRITE_WIDTH
-        add $12, $12, $13        # Calcular X + largura
-        addi $12, $12, 2         # Adicionar movimento (2 pixels)
-        addi $14, $0, 128        # Largura da tela (128)
-        slt $15, $14, $12        # Verificar se X + largura + movimento > 128
-        bne $15, $0, check_keyboard_end   # Se saiu dos limites, não atualizar
-        lw $12, POSX_INIT        # Recarregar posição X atual
-        addi $12, $12, 2         # Mover 2 pixels para direita
-        sw $12, POSX_INIT        # Atualizar posição X
+        add $12, $12, $13        
+        addi $12, $12, 2         
+        addi $14, $0, 128        
+        slt $15, $14, $12        
+        bne $15, $0, check_keyboard_end   
+        lw $12, POSX_INIT        
+        addi $12, $12, 2         
+        sw $12, POSX_INIT        
         j check_keyboard_end
-    
+        
+    init_projectile:
+        
+        lw $12, PROJ_ACTIVE
+        bne $12, $0, check_keyboard_end # Se já ativo, ignora
+
+        addi $4, $0, 80		# Nota
+        addi $5, $0, 300	# Duração da Nota
+        addi $6, $0, 80		# Instrumento
+        addi $7, $0, 100	# Volume
+        addi $2, $0, 31		
+        syscall
+
+        addi $12, $0, 1
+        sw $12, PROJ_ACTIVE
+        
+        lw $13, POSX_INIT
+        addi $13, $13, 5  # Centro do player
+        sw $13, PROJ_X
+        
+        lw $14, POSY_INIT
+        addi $14, $14, -2 # Acima do player
+        sw $14, PROJ_Y
+        j check_keyboard_end
+        
     check_keyboard_end:
         lw $31, 0($29)
         addi $29, $29, 4
         jr $31
 
-# Função para apagar player usando erase_rectangle
 erase_player:
     addi $29, $29, -4
     sw $31, 0($29)
-    
-    # Preparar parâmetros para erase_rectangle (usar posição anterior)
-    lw $20, POSX_PREV          # $20 = X anterior (para apagar)
-    lw $21, POSY_INIT          # $21 = Y inicial
-    lw $23, SPRITE_WIDTH       # $23 = largura
-    lw $24, SPRITE_HEIGHT      # $24 = altura
-    
-    # Chamar função de apagar retângulo
+    lw $20, POSX_PREV          
+    lw $21, POSY_INIT          
+    lw $23, SPRITE_WIDTH       
+    lw $24, SPRITE_HEIGHT      
     jal erase_rectangle
-    
-    # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
 
-# Funções para apagar splash screens (apagar retângulos nas posições dos sprites)
-# Usar as mesmas posições que draw_entity usa internamente
 erase_splash_screen:
     addi $29, $29, -4
     sw $31, 0($29)
-    
-    # Posição e dimensões do primeiro splash screen (mesmas usadas em draw_entity_splash_screen)
-    addi $20, $0, 44             # X inicial
-    addi $21, $0, 64             # Y inicial
-    addi $23, $0, 44             # Largura (44 pixels)
-    addi $24, $0, 8              # Altura (8 pixels)
-    
-    # Usar a mesma lógica de erase_entity para apagar o retângulo
+    addi $20, $0, 44             
+    addi $21, $0, 64             
+    addi $23, $0, 44             
+    addi $24, $0, 8              
     jal erase_rectangle
-    
-    # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
@@ -800,17 +949,11 @@ erase_splash_screen:
 erase_splash_screen2:
     addi $29, $29, -4
     sw $31, 0($29)
-    
-    # Posição e dimensões do segundo splash screen (mesmas usadas em draw_entity_splash_screen2)
-    addi $20, $0, 44             # X inicial
-    addi $21, $0, 74             # Y inicial
-    addi $23, $0, 44             # Largura (44 pixels)
-    addi $24, $0, 8              # Altura (8 pixels)
-    
-    # Usar a mesma lógica de erase_entity para apagar o retângulo
+    addi $20, $0, 44             
+    addi $21, $0, 74             
+    addi $23, $0, 44             
+    addi $24, $0, 8              
     jal erase_rectangle
-    
-    # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
@@ -818,70 +961,331 @@ erase_splash_screen2:
 erase_splash_screen3:
     addi $29, $29, -4
     sw $31, 0($29)
-    
-    # Posição e dimensões do terceiro splash screen (mesmas usadas em draw_entity_splash_screen3)
-    addi $20, $0, 44             # X inicial
-    addi $21, $0, 104             # Y inicial
-    addi $23, $0, 44             # Largura (44 pixels)
-    addi $24, $0, 15             # Altura (15 pixels)
-    
-    # Usar a mesma lógica de erase_entity para apagar o retângulo
+    addi $20, $0, 44             
+    addi $21, $0, 104             
+    addi $23, $0, 44             
+    addi $24, $0, 15             
     jal erase_rectangle
-    
-    # Recuperar $ra
     lw $31, 0($29)
     addi $29, $29, 4
     jr $31
 
-# Função auxiliar para apagar um retângulo
-# Parâmetros: $20 = X inicial, $21 = Y inicial, $23 = largura, $24 = altura
 erase_rectangle:
     addi $29, $29, -4
     sw $31, 0($29)
     
-    add $16, $0, $20                 # $16 = X inicial (preservar)
-    add $17, $0, $21                 # $17 = Y inicial (preservar)
+    add $16, $0, $20                 
+    add $17, $0, $21                 
+    addi $11, $0, 0                  
+    addi $13, $0, 0                  
+    addi $12, $0, 0                  
     
-    addi $11, $0, 0                  # $11 = linha atual
-    addi $13, $0, 0                  # $13 = coluna atual
-    addi $12, $0, 0                  # $12 = cor preta (0x00000000)
-    
-    # Loop externo: percorre linhas
     erase_rectangle_loop_y:
-        beq $11, $24, erase_rectangle_end    # Se linha >= altura, termina
-        
+        beq $11, $24, erase_rectangle_end    
         addi $13, $0, 0
-        
         erase_rectangle_loop_x:
-            beq $13, $23, erase_rectangle_next_y   # Se coluna >= largura, próxima linha
-            
-            # Salvar valores temporários na pilha antes de chamar drawpx
+            beq $13, $23, erase_rectangle_next_y   
             addi $29, $29, -8
-            sw $11, 0($29)                   # Salvar linha atual
-            sw $13, 4($29)                   # Salvar coluna atual
-            
-            add $20, $16, $13               # $20 = X inicial + coluna
-            add $21, $17, $11                # $21 = Y inicial + linha
-            
+            sw $11, 0($29)                   
+            sw $13, 4($29)                   
+            add $20, $16, $13               
+            add $21, $17, $11                
             jal drawpx
-            
-            lw $11, 0($29)                   # Restaurar linha atual
-            lw $13, 4($29)                   # Restaurar coluna atual
+            lw $11, 0($29)                   
+            lw $13, 4($29)                   
             addi $29, $29, 8
-            
             addi $13, $13, 1
             j erase_rectangle_loop_x
-        
         erase_rectangle_next_y:
             addi $11, $11, 1
             j erase_rectangle_loop_y
-    
     erase_rectangle_end:
-        # Restaurar X e Y originais
-        add $20, $0, $16                 # Restaurar X inicial
-        add $21, $0, $17                 # Restaurar Y inicial
-        
+        add $20, $0, $16                 
+        add $21, $0, $17                 
         lw $31, 0($29)
         addi $29, $29, 4
         jr $31
 
+# ==========================================================
+# NOVA FUNÇÃO: ATUALIZAR PROJÉTIL E COLISÃO
+# ==========================================================
+update_projectile:
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    lw $8, PROJ_ACTIVE
+    beq $8, $0, up_proj_end
+    
+    lw $20, PROJ_X
+    lw $21, PROJ_Y
+    
+    # 1. Apagar pixel atual (desenhar preto)
+    # Salvar registradores pois drawpx usa $11, $12, etc
+    addi $29, $29, -8
+    sw $20, 0($29)
+    sw $21, 4($29)
+    
+    addi $12, $0, 0 # Preto
+    jal drawpx
+    
+    lw $20, 0($29)
+    lw $21, 4($29)
+    addi $29, $29, 8
+    
+    # 2. Mover para cima
+    addi $21, $21, -4 # Velocidade do tiro
+    sw $21, PROJ_Y
+    
+    # 3. Verificar Limites (Topo da tela)
+    slt $8, $21, $0 # Y < 0?
+    bne $8, $0, up_proj_deactivate
+    
+    # 4. Verificar Colisão (Ler Cor do Pixel)
+    # Calcular endereço: Base (0x10010000) + (Y*128 + X)*4
+    lui $9, 0x1001
+    addi $10, $0, 128
+    mul $11, $21, $10
+    add $11, $11, $20
+    sll $11, $11, 2
+    add $11, $11, $9
+    
+    lw $12, 0($11) # Carregar cor da nova posição
+    
+    lw $13, COR_ENEMY
+    beq $12, $13, up_proj_collision
+    
+    # Se não houve colisão, desenhar nova posição
+    lw $12, COR_PROJ
+    jal drawpx
+    j up_proj_end
+
+up_proj_deactivate:
+    sw $0, PROJ_ACTIVE
+    j up_proj_end
+
+up_proj_collision:
+    # 1. Desativar tiro
+    sw $0, PROJ_ACTIVE
+    
+    # 2. Descobrir qual inimigo morreu e atualizar status
+    # Precisamos de $20 (Proj X) e $21 (Proj Y)
+    
+    # Determinar Fileira (Row)
+    addi $17, $0, -1      # $17 = Row Index
+    
+    lw $10, ENEMY_Y
+    slt $11, $21, $10     # ProjY < EnemyY ?
+    bne $11, $0, up_proj_end # Se for menor que a primeira fileira, erro
+    
+    # Verificar Fileira 0 (Y >= 30 e Y < 38) - Simplificado: Y < Y2
+    lw $10, ENEMY_Y2
+    slt $11, $21, $10
+    bne $11, $0, set_row_0
+    
+    # Verificar Fileira 1 (Y >= 50 e Y < Y3)
+    lw $10, ENEMY_Y3
+    slt $11, $21, $10
+    bne $11, $0, set_row_1
+    
+    # Se chegou aqui, é Fileira 2
+    j set_row_2
+    
+    set_row_0: addi $17, $0, 0
+    lw $26, ENEMY_Y
+    j calc_col
+    set_row_1: addi $17, $0, 1
+    lw $26, ENEMY_Y2
+    j calc_col
+    set_row_2: addi $17, $0, 2
+    lw $26, ENEMY_Y3
+    j calc_col
+    
+    calc_col:
+        # Col Index = (ProjX - EnemyBaseX) / 17
+        lw $10, ENEMY_X
+        sub $11, $20, $10   # Delta X
+        
+        # Se Delta X < 0, ignorar (tiro fora da grade à esquerda)
+        slt $12, $11, $0
+        bne $12, $0, up_proj_end
+        
+        addi $12, $0, 17
+        div $11, $12
+        mflo $16            # $16 = Col Index (0 a 4)
+        
+        # Verificar se Col <= 4
+        addi $12, $0, 5
+        slt $13, $16, $12   # Col < 5?
+        beq $13, $0, up_proj_end
+        
+        # Calcular Índice Global: Row * 5 + Col
+        mul $27, $17, $12
+        add $27, $27, $16   # $27 = Índice Global (0-14)
+        
+        # Marcar como morto (0) no array ENEMIES_STATUS
+        la $14, ENEMIES_STATUS
+        sll $25, $27, 2     # Offset em bytes
+        add $14, $14, $25
+        sw $0, 0($14)       # Status = 0 (Morto)
+        
+        # Apagar o inimigo da tela imediatamente
+        # Precisamos de X e Y do inimigo para erase_enemy_at
+        # X = EnemyBaseX + Col * 17
+        addi $12, $0, 17
+        mul $15, $16, $12
+        lw $10, ENEMY_X
+        add $20, $10, $15   # X do Inimigo
+        add $21, $0, $26    # Y do Inimigo (já carregado em $26)
+
+        addi $4, $0, 50		# Nota
+        addi $5, $0, 100	# Duração da Nota
+        addi $6, $0, 116		# Instrumento
+        addi $7, $0, 100	# Volume
+        addi $2, $0, 31		
+        syscall
+        
+        addi $4, $0, 100 	# Timer para ir para proxima nota 
+        addi $2, $0, 32
+        syscall
+
+        addi $4, $0, 40		# Nota
+        addi $5, $0, 100	# Duração da Nota
+        addi $6, $0, 116		# Instrumento
+        addi $7, $0, 100	# Volume
+        addi $2, $0, 31		
+        syscall
+        
+        addi $4, $0, 100 	# Timer para ir para proxima nota 
+        addi $2, $0, 32
+        syscall
+
+        addi $4, $0, 30		# Nota
+        addi $5, $0, 100	# Duração da Nota
+        addi $6, $0, 116		# Instrumento
+        addi $7, $0, 100	# Volume
+        addi $2, $0, 31		
+        syscall
+        
+        addi $4, $0, 100 	# Timer para ir para proxima nota 
+        addi $2, $0, 32
+        syscall
+        
+        jal erase_enemy_at
+
+    j up_proj_end
+
+up_proj_end:
+    lw $31, 0($29)
+    addi $29, $29, 4
+    jr $31
+
+# ==========================================================
+# FUNÇÃO CORRIGIDA COM PROTEÇÃO DE REGISTRADORES
+# ==========================================================
+refresh_enemies:
+    addi $29, $29, -4
+    sw $31, 0($29)
+    
+    addi $29, $29, -24
+    sw $16, 0($29)       
+    sw $17, 4($29)       
+    sw $18, 8($29)       
+    sw $19, 12($29)      
+    sw $26, 16($29)      
+    sw $27, 20($29)      
+    
+    lw $18, ENEMY_X_PREV      
+    lw $19, ENEMY_X           
+    
+    # Loop Fileiras (0 a 2)
+    addi $17, $0, 0
+    
+    refresh_loop_y:
+        beq $17, 3, refresh_end_y
+        
+        beq $17, $0, refresh_y1
+        addi $14, $0, 1
+        beq $17, $14, refresh_y2
+        lw $26, ENEMY_Y3
+        j refresh_y_done
+        refresh_y1: lw $26, ENEMY_Y
+        j refresh_y_done
+        refresh_y2: lw $26, ENEMY_Y2
+        refresh_y_done:
+            
+            # Loop Colunas (0 a 4)
+            addi $16, $0, 0
+            
+            refresh_loop_x:
+                beq $16, 5, refresh_end_x
+                
+                # --- VERIFICAR STATUS DO INIMIGO ---
+                # Índice = Row($17) * 5 + Col($16)
+                addi $27, $0, 5
+                mul $27, $17, $27
+                add $27, $27, $16   # Índice
+                sll $27, $27, 2     # Bytes
+                la $14, ENEMIES_STATUS
+                add $27, $27, $14
+                lw $14, 0($27)      # Carregar status
+                
+                # Se Status == 0 (Morto), pular
+                beq $14, $0, refresh_skip_enemy
+                
+                addi $14, $0, 17
+                mul $15, $16, $14   
+                
+                # --- PASSO A: APAGAR ---
+                add $20, $18, $15   
+                add $21, $0, $26    
+                
+                # BLINDAGEM CRÍTICA: Salvar $16 e $17 na pilha
+                # porque erase_rectangle vai usar esses registos!
+                addi $29, $29, -20
+                sw $15, 0($29)
+                sw $26, 4($29)
+                sw $16, 8($29)      # Salva contador colunas
+                sw $17, 12($29)     # Salva contador fileiras
+                sw $19, 16($29)
+                
+                jal erase_enemy_at  
+                
+                lw $15, 0($29)
+                lw $26, 4($29)
+                lw $19, 16($29)
+                # (Não recuperamos $16 e $17 ainda)
+                
+                # --- PASSO B: DESENHAR ---
+                add $20, $19, $15   
+                add $21, $0, $26    
+                
+                jal draw_enemy_at   
+                
+                # Restaurar contadores originais
+                lw $15, 0($29)
+                lw $26, 4($29)
+                lw $16, 8($29)      # Recupera contador colunas
+                lw $17, 12($29)     # Recupera contador fileiras
+                lw $19, 16($29)
+                addi $29, $29, 20
+                
+            refresh_skip_enemy:
+                addi $16, $16, 1
+                j refresh_loop_x
+            
+            refresh_end_x:
+                addi $17, $17, 1
+                j refresh_loop_y
+    
+    refresh_end_y:
+        lw $16, 0($29)
+        lw $17, 4($29)
+        lw $18, 8($29)
+        lw $19, 12($29)
+        lw $26, 16($29)
+        lw $27, 20($29)
+        addi $29, $29, 24
+        
+        lw $31, 0($29)
+        addi $29, $29, 4
+        jr $31
